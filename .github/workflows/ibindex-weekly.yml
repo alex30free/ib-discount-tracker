@@ -1,0 +1,40 @@
+name: Update ibindex discount tracker
+
+on:
+  schedule:
+    # Fridays 17:30 UTC (18:30 CET / 19:30 CEST), after Stockholm close
+    - cron: "30 17 * * 5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ibindex-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download ibindex data and recompute
+        run: python scripts/ibindex_update.py
+
+      - name: Commit updated data
+        run: |
+          if git diff --quiet -- data.json; then
+            echo "No changes in data."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898733+github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git commit -m "ibindex: weekly data update $(date -u +%Y-%m-%d)"
+          git push

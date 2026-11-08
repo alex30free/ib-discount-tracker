@@ -296,7 +296,7 @@
     const vals = rows.flatMap((r) => [r.v, r.hi, r.lo]).filter((v) => v != null);
     const y = d3.scaleLinear(d3.extent(vals), [mt, H - mb]).nice();   // premium (negative) at the top
     const yt = y.ticks(6);
-    const fa = (v) => f1(Math.abs(v)) + '%';
+    const fa = (v) => v === 0 ? 'NAV' : d3.format('.0f')(Math.abs(v)) + '% ' + (v < 0 ? 'prem' : 'disc');
     const last = rows[rows.length - 1];
     const endLab = W < 560 ? fshort(last.v) : fval(last.v);
     const left = measure(svg, yt.map(fa)) + 10;
@@ -304,11 +304,18 @@
     const x = d3.scaleUtc(d3.extent(rows, (r) => r.date), [left, W - right]);
     svg.append('g').selectAll('line').data(yt).join('line').attr('x1', left).attr('x2', W - right).attr('y1', y).attr('y2', y)
       .attr('stroke', (v) => v === 0 ? 'var(--muted)' : 'var(--border)');
-    svg.append('g').selectAll('text').data(yt).join('text').attr('class', 'tick').attr('x', left - 8).attr('y', y).attr('dy', '0.32em').attr('text-anchor', 'end').text(fa);
+    svg.append('g').selectAll('text').data(yt).join('text').attr('class', 'tick').attr('x', left - 8).attr('y', y).attr('dy', '0.32em').attr('text-anchor', 'end').attr('fill', (v) => v < 0 ? 'var(--coral)' : null).text(fa);
     svg.append('g').selectAll('text').data(x.ticks(W < 560 ? 4 : 8)).join('text').attr('class', 'tick').attr('x', x).attr('y', H - 8).attr('text-anchor', 'middle').text(d3.utcFormat('%Y'));
     const [lo, hi] = y.domain();
-    if (lo < 0) svg.append('text').attr('class', 'zone').attr('x', left + 6).attr('y', mt + 12).attr('fill', 'var(--muted2)').text('↑ PREMIUM · PRICE ABOVE NAV');
-    if (hi > 0) svg.append('text').attr('class', 'zone').attr('x', left + 6).attr('y', H - mb - 6).attr('fill', 'var(--muted2)').text('↓ DISCOUNT · PRICE BELOW NAV');
+    // Premium side (above the 0% line) gets a faint tint; labels sit on either side of the 0% line.
+    const y0 = (lo < 0 && hi > 0) ? y(0) : (hi <= 0 ? H - mb : mt);
+    if (lo < 0) svg.append('rect').attr('x', left).attr('width', W - right - left).attr('y', mt).attr('height', Math.max(0, y0 - mt)).attr('fill', 'var(--coral)').attr('opacity', 0.05);
+    if (lo < 0 && hi > 0) {
+      svg.append('line').attr('x1', left).attr('x2', W - right).attr('y1', y0).attr('y2', y0).attr('stroke', 'var(--muted2)').attr('stroke-width', 1.5);
+    }
+    if (!(lo < 0 && hi > 0)) {
+      svg.append('text').attr('class', 'zone').attr('x', left + 6).attr('y', mt + 12).attr('fill', lo < 0 ? 'var(--coral)' : 'var(--muted2)').text(lo < 0 ? 'ENTIRE PERIOD AT A PREMIUM' : 'ENTIRE PERIOD AT A DISCOUNT');
+    }
     svg.append('path').datum(rows).attr('d', d3.area().defined((r) => r.hi != null && r.lo != null).x((r) => x(r.date)).y0((r) => y(r.lo)).y1((r) => y(r.hi)))
       .attr('fill', 'var(--band)').attr('opacity', 0.75);
     svg.append('path').datum(rows).attr('d', d3.line().defined((r) => r.mu != null).x((r) => x(r.date)).y((r) => y(r.mu)))

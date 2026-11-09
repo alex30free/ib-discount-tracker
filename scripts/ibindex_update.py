@@ -33,12 +33,17 @@ FALLBACK = {
     "BURE": "Bure", "CRED A": "Creades", "INDU C": "Industrivärden", "INVE B": "Investor",
     "KINV B": "Kinnevik", "LATO B": "Latour", "LINC": "Linc", "LUND B": "Lundbergs",
     "SVOL B": "Svolder", "TRAC B": "Traction", "VEFAB": "VEF", "VNV": "VNV Global", "ORES": "Öresund",
+    "AJA B": "Byggmästare AJA B", "COLLAX": "Collaxio B", "FLAT B": "Flat Capital", "FLERIE": "Flerie",
+    "NAXS": "NAXS", "SON": "Sonae, SGPS, S.A.", "SPLTN": "Spiltan Invest",
 }
+INDEX_FALLBACK = {"BURE", "CRED A", "INDU C", "INVE B", "KINV B", "LATO B", "LINC", "LUND B",
+                  "SVOL B", "TRAC B", "VEFAB", "VNV", "ORES"}
 
 THRESHOLD = 1.0      # z-score that defines buy / sell zone
 WIN_1Y, WIN_3Y, WIN_5Y, WIN_7Y = 250, 750, 1250, 1750   # trading days
 FWD = 250            # forward horizon for the backtest (trading days)
 MIN_HISTORY = 1250   # first backtest day needs 5 years of prior data
+MIN_ZONE_DAYS = 500  # under ~2 years of data a company gets no zone ("short")
 
 # Zones: "normal" level = average of the 5-year and 7-year averages,
 # "normal swing" = average of the 5-year and 7-year standard deviations.
@@ -64,14 +69,34 @@ def decode(raw):
     return raw.decode("utf-8", errors="replace")
 
 
-def get_companies():
-    raw = post("/companies/getCompanies.req", {})
-    items = json.loads(decode(raw))
+def _product_list(path):
+    items = json.loads(decode(post(path, {})))
     out = []
-    for it in items:
-        tk = it.get("product")
+    for it in items or []:
+        tk = it.get("product") if isinstance(it, dict) else None
         if tk:
             out.append((tk, it.get("productName") or FALLBACK.get(tk, tk)))
+    return out
+
+
+def get_companies():
+    """All investment companies ibindex tracks (its 'Aktier' list), flagged if they are in the index."""
+    try:
+        index = {tk for tk, _ in _product_list("/companies/getCompanies.req")}
+    except Exception:  # noqa: BLE001
+        index = set(INDEX_FALLBACK)
+    try:
+        everything = _product_list("/index/getProducts.req")
+    except Exception as exc:  # noqa: BLE001
+        print("WARN could not read full product list (%s), using index companies only" % exc)
+        everything = []
+    if not everything:
+        everything = _product_list("/companies/getCompanies.req")
+    seen, out = set(), []
+    for tk, name in everything:
+        if tk not in seen:
+            seen.add(tk)
+            out.append((tk, name, tk in index))
     return out
 
 
@@ -258,6 +283,8 @@ def analyse(rows):
     mb, sb = (m5 + m7) / 2, (s5 + s7) / 2
     zb = (now - mb) / sb if sb else 0.0
     zone = "buy" if zb >= THRESHOLD else ("sell" if zb <= -THRESHOLD else "neutral")
+    if n < MIN_ZONE_DAYS:
+        zone = "short"
 
     # Backtest: each day, the same blended z as above but using only the data
     # available that day (previous 5 and 7 years), then measure the price change
@@ -335,13 +362,14 @@ def main():
         print("Company list: %d companies" % len(companies))
     except Exception as exc:  # noqa: BLE001
         print("WARN could not read company list (%s), using fallback" % exc)
-        companies = [(c["ticker"], c["name"]) for c in previous.values()] or list(FALLBACK.items())
+        companies = ([(c["ticker"], c["name"], c.get("in_index", True)) for c in previous.values()]
+                     or [(tk, nm, tk in INDEX_FALLBACK) for tk, nm in FALLBACK.items()])
 
     result, fresh = [], 0
-    for ticker, name in companies:
+    for ticker, name, in_index in companies:
         try:
             rows = parse_csv(get_price_csv(ticker))
-            entry = {"ticker": ticker, "name": name}
+            entry = {"ticker": ticker, "name": name, "in_index": in_index}
             entry.update(analyse(rows))
             try:
                 time.sleep(1)

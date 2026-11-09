@@ -197,6 +197,7 @@
       <span><span class="sw" style="background:var(--sell)"></span>Sell zone</span>
     </div>
     <div class="chart" id="c-overview"></div>
+    <p class="note" id="unrated"></p>
     <p class="note">A z-score says how unusual today's valuation is for that particular company, not whether it is cheap in absolute terms. Investor and Latour, for example, have moved from discount to premium over the years.</p>
   </section>
 
@@ -235,7 +236,7 @@
 
   <section class="card">
     <h2>Today versus history</h2>
-    <p class="note">Computed on daily values. Percentile: share of days over the last five years with a smaller discount than today.</p>
+    <p class="note">Computed on daily values. Percentile: share of days over the last five years with a smaller discount than today. ° = tracked by ibindex but not part of the ibindex index itself.</p>
     <div class="tablewrap">
       <table>
         <thead><tr><th>Company</th><th>Today</th><th>5y average</th><th>7y average</th><th>Normal level<br>(5y+7y)/2</th><th>σ</th><th>z</th><th>Percentile 5y</th><th>Zone</th></tr></thead>
@@ -273,7 +274,7 @@
     <summary>Method and caveats</summary>
     <dl>
       <dt>Source</dt>
-      <dd>The price history CSV that ibindex.se offers for each company: share price, reported NAV and ibindex's calculated NAV per trading day. Only the companies ibindex tracks are included. A GitHub Action downloads the files every Friday and recomputes everything.</dd>
+      <dd>The price history CSV that ibindex.se offers for each company: share price, reported NAV and ibindex's calculated NAV per trading day. All investment companies ibindex tracks are included: the companies in the ibindex index, plus the others it lists (marked °). Companies with under 2 years of data are shown but not given a zone. A GitHub Action downloads the files every Friday and recomputes everything.</dd>
       <dt>Discount</dt>
       <dd>(NAV − price) / NAV. Positive is a discount, negative a premium. The daily calculated NAV is used where available (from November 2016, Linc from May 2021); before that the latest reported NAV.</dd>
       <dt>z-score and zones</dt>
@@ -313,18 +314,21 @@
   // Zone statistics: blended 5y/7y if the data has it, otherwise the older 3-year fields.
   function Z(c) {
     const n = c.now;
+    if (n.zone === 'short') return { z: null, mean: n.mean_blend, sd: n.sd_blend, short: true };
     if (n.z_blend != null) return { z: n.z_blend, mean: n.mean_blend, sd: n.sd_blend };
     return { z: n.z_3y, mean: n.mean_3y, sd: n.sd_3y };
   }
   const f1 = d3.format('.1f');
-  const fz = d3.format('+.1f');
+  const fzRaw = d3.format('+.1f');
+  const fz = (v) => v == null ? '–' : fzRaw(v);
+  const nm = (c) => c.name + (c.in_index === false ? ' °' : '');
   const fval = (v) => v == null ? '–' : (v < 0 ? f1(-v) + '% premium' : f1(v) + '% discount');
   const fshort = (v) => v == null ? '–' : (v < 0 ? f1(-v) + '% prem' : f1(v) + '% disc');
   const fret = (v) => v == null ? '–' : d3.format('+.1f')(v) + '%';
   const fpct = (v) => v == null ? '–' : d3.format('.0f')(v) + '%';
-  const zcls = (z) => z >= TH ? 'buy' : (z <= -TH ? 'sell' : '');
-  const zcol = (z) => z >= TH ? 'var(--buy)' : (z <= -TH ? 'var(--sell)' : 'var(--muted)');
-  const zname = (z) => z >= TH ? 'Buy zone' : (z <= -TH ? 'Sell zone' : 'Neutral');
+  const zcls = (z) => z == null ? '' : (z >= TH ? 'buy' : (z <= -TH ? 'sell' : ''));
+  const zcol = (z) => z == null ? 'var(--muted)' : (z >= TH ? 'var(--buy)' : (z <= -TH ? 'var(--sell)' : 'var(--muted)'));
+  const zname = (z) => z == null ? 'Too little history' : (z >= TH ? 'Buy zone' : (z <= -TH ? 'Sell zone' : 'Neutral'));
   const fmonth = d3.utcFormat('%b %Y');
 
   function monthly(c) {
@@ -356,7 +360,7 @@
   }
 
   function drawExample() {
-    const c = DATA.companies.reduce((a, d) => Math.abs(Z(d).z) > Math.abs(Z(a).z) ? d : a);
+    const c = DATA.companies.filter((d) => Z(d).z != null).reduce((a, d) => Math.abs(Z(d).z) > Math.abs(Z(a).z) ? d : a);
     const n = c.now, zs = Z(c), z = zs.z;
     document.getElementById('ex-name').textContent = c.name;
     const zone = z >= TH ? 'the buy zone: unusually cheap compared with its own history'
@@ -391,7 +395,7 @@
   function drawKpis() {
     const cs = DATA.companies;
     const buy = cs.filter((c) => Z(c).z >= TH), sell = cs.filter((c) => Z(c).z <= -TH);
-    const ext = cs.reduce((a, c) => Math.abs(Z(c).z) > Math.abs(Z(a).z) ? c : a);
+    const ext = cs.filter((c) => Z(c).z != null).reduce((a, c) => Math.abs(Z(c).z) > Math.abs(Z(a).z) ? c : a);
     document.getElementById('k-buy').textContent = buy.length;
     document.getElementById('k-buy-names').textContent = buy.map((c) => c.name).join(', ') || 'None';
     document.getElementById('k-sell').textContent = sell.length;
@@ -399,7 +403,8 @@
     document.getElementById('k-ext').textContent = ext.name;
     document.getElementById('k-ext-sub').textContent = 'z ' + fz(Z(ext).z) + ' · ' + fval(ext.now.disc);
     document.getElementById('k-date').textContent = DATA.data_through;
-    document.getElementById('k-date-sub').textContent = DATA.companies.length + ' companies';
+    const inIdx = DATA.companies.filter((c) => c.in_index !== false).length;
+    document.getElementById('k-date-sub').textContent = DATA.companies.length + ' companies' + (inIdx < DATA.companies.length ? ' · ' + inIdx + ' in the index' : '');
     document.getElementById('updated').textContent = 'Updated ' + DATA.updated.slice(0, 10);
   }
 
@@ -407,7 +412,10 @@
     const el = document.getElementById('c-overview');
     el.replaceChildren();
     const rows = DATA.companies.map((c) => { const zs = Z(c); return { tk: c.ticker, name: c.name, z3: zs.z, now: c.now.disc, m3: zs.mean, sd: zs.sd }; })
-      .sort((a, b) => b.z3 - a.z3);
+      .filter((r) => r.z3 != null).sort((a, b) => b.z3 - a.z3);
+    const unrated = DATA.companies.filter((c) => Z(c).z == null);
+    const un = document.getElementById('unrated');
+    un.textContent = unrated.length ? 'Not rated, under 2 years of data: ' + unrated.map((c) => c.name + ' (' + f1(c.now.years) + ' y)').join(', ') + '.' : '';
     const W = Math.max(300, el.clientWidth), rh = 30, top = 30, H = top + rows.length * rh + 28;
     const svg = d3.select(el).append('svg').attr('width', '100%').attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
     const wide = W >= 640;
@@ -453,7 +461,7 @@
     const zc = Z(c);
     [['Today', fval(last.v)], [avgLabel(avg, false), fval(avg.v)],
      ['Versus average', Math.abs(diff) < 0.05 ? 'at average' : (diff > 0 ? 'cheaper by ' : 'dearer by ') + f1(Math.abs(diff)) + ' pp'],
-     ['Zone', zname(zc.z) + ' (z ' + fz(zc.z) + ')']]
+     ['Zone', zc.z == null ? zname(null) : zname(zc.z) + ' (z ' + fz(zc.z) + ')']]
       .forEach(([l, v], i) => {
         const d = document.createElement('div');
         const a = document.createElement('span'); a.className = 'lbl'; a.textContent = l;
@@ -576,7 +584,7 @@
     tn.replaceChildren();
     DATA.companies.slice().sort((a, b) => Z(b).z - Z(a).z).forEach((c) => {
       const n = c.now, zs = Z(c), tr = document.createElement('tr'), k = zcls(zs.z);
-      td(tr, c.name); td(tr, fval(n.disc)); td(tr, fval(n.mean_5y)); td(tr, n.mean_7y == null ? '–' : fval(n.mean_7y)); td(tr, fval(zs.mean)); td(tr, f1(zs.sd)); td(tr, fz(zs.z), k); td(tr, fpct(n.pct_5y)); td(tr, zname(zs.z), k);
+      td(tr, nm(c)); td(tr, fval(n.disc)); td(tr, fval(n.mean_5y)); td(tr, n.mean_7y == null ? '–' : fval(n.mean_7y)); td(tr, fval(zs.mean)); td(tr, f1(zs.sd)); td(tr, fz(zs.z), k); td(tr, fpct(n.pct_5y)); td(tr, zname(zs.z), k);
       tn.appendChild(tr);
     });
     const tb = document.getElementById('t-bt');
@@ -584,7 +592,7 @@
     const cs = DATA.companies.slice().sort((a, b) => a.name.localeCompare(b.name, 'sv'));
     cs.forEach((c) => {
       const b = c.backtest, tr = document.createElement('tr');
-      td(tr, c.name);
+      td(tr, nm(c));
       td(tr, fret(b.buy.ret), b.buy.ret != null && b.buy.ret > b.all.ret ? 'buy' : '');
       td(tr, fpct(b.buy.up));
       td(tr, fret(b.sell.ret), b.sell.ret != null && b.sell.ret < b.all.ret ? 'sell' : '');

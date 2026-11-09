@@ -66,6 +66,24 @@
     details summary { cursor: pointer; color: var(--text); font-family: 'IBM Plex Mono', monospace; }
     details dt { color: var(--text); margin-top: 10px; }
     footer { border-top: 1px solid var(--border); padding-top: 14px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .learn { padding: 0; }
+    .learn > summary { list-style: none; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 15px; color: var(--white); }
+    .learn > summary::-webkit-details-marker { display: none; }
+    .learn > summary .hint { font-size: 12px; color: var(--coral); white-space: nowrap; }
+    .learn[open] > summary .hint::after { content: ' ▲'; }
+    .learn:not([open]) > summary .hint::after { content: ' ▼'; }
+    .learn-body { padding: 0 20px 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 18px 28px; }
+    .step { font-size: 14px; line-height: 1.65; color: var(--text); }
+    .step h3 { font-family: 'IBM Plex Mono', monospace; font-weight: 500; font-size: 13px; color: var(--coral); letter-spacing: .04em; margin-bottom: 4px; }
+    .step p + p { margin-top: 6px; }
+    .step b { color: var(--white); font-weight: 400; }
+    .step code { font-family: 'IBM Plex Mono', monospace; color: var(--white); background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; font-size: 12px; }
+    .example { grid-column: 1 / -1; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 16px; }
+    .example .step h3 { color: var(--avg); }
+    .ex-scale { margin-top: 10px; }
+    .rules { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; }
+    .rule { border: 1px solid var(--border2); border-radius: 5px; padding: 12px; font-size: 13px; line-height: 1.55; }
+    .rule .t { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: .06em; margin-bottom: 4px; }
     .err { color: var(--sell); font-family: 'IBM Plex Mono', monospace; }
     .seg { display: inline-flex; border: 1px solid var(--border2); border-radius: 4px; overflow: hidden; }
     .seg button { background: var(--surface2); color: var(--muted2); border: 0; padding: 7px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; cursor: pointer; }
@@ -116,9 +134,58 @@
     <div class="kpi"><div class="kpi-label">Data through</div><div class="kpi-val" id="k-date">–</div><div class="kpi-sub" id="k-date-sub"></div></div>
   </div>
 
+  <details class="card learn" id="learn">
+    <summary><span>New here? How to read this page — discount, σ and buy/sell zones</span><span class="hint">3-minute read</span></summary>
+    <div class="learn-body">
+      <div class="step">
+        <h3>1 · What is NAV?</h3>
+        <p>An investment company (like Investor or Latour) is basically a basket of other companies. <b>NAV</b> (net asset value, <i>substansvärde</i>) is what that basket is worth per share: the value of everything it owns, minus its debt.</p>
+      </div>
+      <div class="step">
+        <h3>2 · Discount and premium</h3>
+        <p>The share price on the stock market is often <b>not</b> the same as NAV.</p>
+        <p><b>Discount</b>: price is <i>below</i> NAV. A 10% discount means you pay 90 kr for 100 kr worth of assets.<br><b>Premium</b>: price is <i>above</i> NAV. A 10% premium means you pay 110 kr for 100 kr worth of assets.</p>
+      </div>
+      <div class="step">
+        <h3>3 · Every company has its own "normal"</h3>
+        <p>Some companies almost always trade at a premium (investors pay extra for a strong track record or skilled owners), others almost always at a discount (unlisted holdings, costs, a less popular strategy). So <b>a 5% premium can be expensive for one company and cheap for another</b>. That is why this page compares each company with <b>its own history</b> rather than with zero.</p>
+      </div>
+      <div class="step">
+        <h3>4 · Average and σ (sigma)</h3>
+        <p>We look at the last <b>3 years</b> of daily values and calculate two things:</p>
+        <p><b>Average</b>: the company's typical discount or premium.<br><b>σ, standard deviation</b>: how much it normally swings around that average. Small σ = calm and stable; large σ = it jumps around a lot.</p>
+        <p>As a rule of thumb, values stay within ±1σ of the average about <b>two-thirds of the time</b>, and beyond ±2σ only about <b>1 time in 20</b>.</p>
+      </div>
+      <div class="step">
+        <h3>5 · The z-score</h3>
+        <p>The z-score answers one question: <b>how many "normal swings" away from its usual level is the company today?</b></p>
+        <p><code>z = (discount today − average) ÷ σ</code></p>
+        <p>z = 0 means exactly normal. z = +2 means the discount is two normal swings <i>wider</i> than usual (cheaper). z = −2 means two swings <i>narrower</i> than usual, or a premium (more expensive).</p>
+      </div>
+      <div class="step">
+        <h3>6 · Buy zone and sell zone</h3>
+        <p><b style="color:var(--buy)">Buy zone (z ≥ +1)</b>: the discount is unusually wide, so the share is unusually cheap compared with its own history.</p>
+        <p><b style="color:var(--sell)">Sell zone (z ≤ −1)</b>: the discount is unusually narrow or there is an unusual premium, so the share is unusually expensive compared with its own history.</p>
+        <p>Between −1 and +1 is <b>neutral</b>: nothing unusual.</p>
+      </div>
+      <div class="example">
+        <div class="step">
+          <h3>Worked example with today's data · <span id="ex-name">–</span></h3>
+          <p id="ex-text">–</p>
+        </div>
+        <div class="ex-scale" id="ex-scale"></div>
+      </div>
+      <div class="rules">
+        <div class="rule"><div class="t" style="color:var(--buy)">WHY IT CAN WORK</div>Discounts and premiums tend to drift back towards their normal level over time. In the backtest below, buying in the buy zone beat the average 12-month return for most companies.</div>
+        <div class="rule"><div class="t" style="color:var(--sell)">WHY IT CAN FAIL</div>"Normal" can change for good: Investor and Latour have moved from discount to premium over the years. A company can also be cheap for a reason, such as falling asset values or a weak strategy.</div>
+        <div class="rule"><div class="t" style="color:var(--avg)">HOW TO USE IT</div>Treat the zones as a starting point for your own research, not as a buy or sell button. Look at the holdings, the long-term chart and the 5/7-year average before deciding anything.</div>
+      </div>
+    </div>
+  </details>
+
   <section class="card" id="overview">
     <h2>Where does each company stand today?</h2>
-    <p class="note">Distance from the company's own 3-year average, in standard deviations (z-score). On the right: current valuation and the 3-year average. Click a company to see its history.</p>
+    <p class="note">Distance from the company's own 3-year average, in standard deviations (z-score). On the right: current valuation and the 3-year average. Click a company to see its history. <a href="#learn" id="learn-link">What does this mean?</a></p>
     <div class="legend">
       <span><span class="sw" style="background:var(--buy)"></span>Buy zone</span>
       <span><span class="sw" style="background:var(--sell)"></span>Sell zone</span>
@@ -252,6 +319,37 @@
     document.getElementById('pick').value = tk;
     drawDetail(); drawHoldings(); drawGrid();
     if (scroll) document.getElementById('detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function drawExample() {
+    const c = DATA.companies.reduce((a, d) => Math.abs(d.now.z_3y) > Math.abs(a.now.z_3y) ? d : a);
+    const n = c.now, z = n.z_3y;
+    document.getElementById('ex-name').textContent = c.name;
+    const zone = z >= TH ? 'the buy zone: unusually cheap compared with its own history'
+      : (z <= -TH ? 'the sell zone: unusually expensive compared with its own history' : 'neutral territory');
+    const p = document.getElementById('ex-text');
+    p.textContent = 'Over the last 3 years the average for ' + c.name + ' has been ' + fval(n.mean_3y) +
+      ', usually swinging about ' + f1(n.sd_3y) + ' percentage points around that (that is its σ). Today it is at ' + fval(n.disc) +
+      '. Written as a discount, a premium is a negative number, so z = (' + f1(n.disc) + ' − ' + f1(n.mean_3y) + ') ÷ ' + f1(n.sd_3y) + ' = ' + fz(z) +
+      '. In words: today is ' + f1(Math.abs(z)) + ' normal swings ' + (z < 0 ? 'more expensive' : 'cheaper') + ' than usual, which puts it in ' + zone + '.';
+    // number line
+    const el = document.getElementById('ex-scale');
+    el.replaceChildren();
+    const W = Math.max(280, el.clientWidth), H = 74, m = 14;
+    const zmax = Math.max(3, Math.ceil(Math.abs(z)) + 0.5);
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
+    const x = d3.scaleLinear([-zmax, zmax], [m, W - m]);
+    svg.append('rect').attr('x', x(-zmax)).attr('width', x(-TH) - x(-zmax)).attr('y', 18).attr('height', 22).attr('fill', 'var(--sell)').attr('opacity', 0.15);
+    svg.append('rect').attr('x', x(-TH)).attr('width', x(TH) - x(-TH)).attr('y', 18).attr('height', 22).attr('fill', 'var(--muted)').attr('opacity', 0.15);
+    svg.append('rect').attr('x', x(TH)).attr('width', x(zmax) - x(TH)).attr('y', 18).attr('height', 22).attr('fill', 'var(--buy)').attr('opacity', 0.15);
+    const wide = W > 520;
+    svg.append('text').attr('class', 'zone').attr('x', x((-zmax - TH) / 2)).attr('y', 12).attr('text-anchor', 'middle').attr('fill', 'var(--sell)').text(wide ? 'SELL ZONE · EXPENSIVE' : 'SELL');
+    svg.append('text').attr('class', 'zone').attr('x', x(0)).attr('y', 12).attr('text-anchor', 'middle').attr('fill', 'var(--muted2)').text('NEUTRAL');
+    svg.append('text').attr('class', 'zone').attr('x', x((zmax + TH) / 2)).attr('y', 12).attr('text-anchor', 'middle').attr('fill', 'var(--buy)').text(wide ? 'BUY ZONE · CHEAP' : 'BUY');
+    svg.append('g').selectAll('text').data(d3.range(-Math.floor(zmax), Math.floor(zmax) + 1)).join('text').attr('class', 'tick')
+      .attr('x', (v) => x(v)).attr('y', H - 6).attr('text-anchor', 'middle').text((v) => v === 0 ? (wide ? 'average' : 'avg') : d3.format('+d')(v) + (wide ? 'σ' : ''));
+    svg.append('line').attr('x1', x(z)).attr('x2', x(z)).attr('y1', 14).attr('y2', 44).attr('stroke', 'var(--white)').attr('stroke-width', 2);
+    svg.append('circle').attr('cx', x(z)).attr('cy', 29).attr('r', 6).attr('fill', zcol(z));
   }
 
   function drawKpis() {
@@ -471,7 +569,7 @@
     parts.forEach((x) => { if (typeof x === 'string') p.appendChild(document.createTextNode(x)); else { const s = document.createElement('strong'); s.textContent = x[0]; if (x[1]) s.className = x[1]; p.appendChild(s); } });
   }
 
-  function drawAll() { drawOverview(); drawDetail(); drawHoldings(); drawGrid(); }
+  function drawAll() { drawOverview(); drawDetail(); drawHoldings(); drawGrid(); if (document.getElementById('learn').open) drawExample(); }
 
   fetch('data.json', { cache: 'no-cache' })
     .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
@@ -488,7 +586,9 @@
         document.querySelectorAll('.seg button').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
         drawDetail(); drawGrid();
       }));
-      drawKpis(); drawTables(); drawAll();
+      drawKpis(); drawTables(); drawAll(); drawExample();
+      document.getElementById('learn-link').addEventListener('click', () => { document.getElementById('learn').open = true; });
+      document.getElementById('learn').addEventListener('toggle', drawExample);
       let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(drawAll, 150); });
     })
     .catch((e) => {

@@ -36,9 +36,13 @@ FALLBACK = {
 }
 
 THRESHOLD = 1.0      # z-score that defines buy / sell zone
-WIN_1Y, WIN_3Y, WIN_5Y = 250, 750, 1250   # trading days
+WIN_1Y, WIN_3Y, WIN_5Y, WIN_7Y = 250, 750, 1250, 1750   # trading days
 FWD = 250            # forward horizon for the backtest (trading days)
-MIN_HISTORY = 500    # first backtest day needs this many prior days
+MIN_HISTORY = 1250   # first backtest day needs 5 years of prior data
+
+# Zones: "normal" level = average of the 5-year and 7-year averages,
+# "normal swing" = average of the 5-year and 7-year standard deviations.
+# z = (discount today - normal level) / normal swing.
 BAND_MONTHS = 36     # rolling window for the monthly band
 MIN_BAND_MONTHS = 24
 
@@ -217,31 +221,40 @@ def analyse(rows):
     def window(length):
         return disc[max(0, n - length):]
 
-    w1, w3, w5 = window(WIN_1Y), window(WIN_3Y), window(WIN_5Y)
+    w1, w3, w5, w7 = window(WIN_1Y), window(WIN_3Y), window(WIN_5Y), window(WIN_7Y)
     m1, s1 = mean_sd(w1)
     m3, s3 = mean_sd(w3)
     m5, s5 = mean_sd(w5)
+    m7, s7 = mean_sd(w7)
     z3 = (now - m3) / s3 if s3 else 0.0
     z5 = (now - m5) / s5 if s5 else 0.0
-    zone = "buy" if z3 >= THRESHOLD else ("sell" if z3 <= -THRESHOLD else "neutral")
+    z7 = (now - m7) / s7 if s7 else 0.0
+    mb, sb = (m5 + m7) / 2, (s5 + s7) / 2
+    zb = (now - mb) / sb if sb else 0.0
+    zone = "buy" if zb >= THRESHOLD else ("sell" if zb <= -THRESHOLD else "neutral")
 
-    # Backtest: each day, z against the previous WIN_3Y days only (no look-ahead),
-    # then measure price change and discount change FWD days later.
+    # Backtest: each day, the same blended z as above but using only the data
+    # available that day (previous 5 and 7 years), then measure the price change
+    # and discount change FWD days later.
     S = [0.0] * (n + 1)
     Q = [0.0] * (n + 1)
     for i, v in enumerate(disc):
         S[i + 1] = S[i] + v
         Q[i + 1] = Q[i] + v * v
     buckets = {"buy": [], "sell": [], "all": []}
-    for i in range(MIN_HISTORY, n - FWD):
-        a = max(0, i - WIN_3Y)
+    def win_stats(i, length):
+        a = max(0, i - length)
         L = i - a
         m = (S[i] - S[a]) / L
-        var = max(0.0, (Q[i] - Q[a]) / L - m * m)
-        sd = var ** 0.5
+        return m, max(0.0, (Q[i] - Q[a]) / L - m * m) ** 0.5
+
+    for i in range(MIN_HISTORY, n - FWD):
+        bm5, bs5 = win_stats(i, WIN_5Y)
+        bm7, bs7 = win_stats(i, WIN_7Y)
+        sd = (bs5 + bs7) / 2
         if sd == 0:
             continue
-        z = (disc[i] - m) / sd
+        z = (disc[i] - (bm5 + bm7) / 2) / sd
         obs = ((price[i + FWD] / price[i] - 1) * 100, disc[i + FWD] - disc[i])
         buckets["all"].append(obs)
         if z >= THRESHOLD:
@@ -268,6 +281,9 @@ def analyse(rows):
         "now": {
             "disc": r1(now), "mean_1y": r1(m1), "mean_3y": r1(m3), "sd_3y": r1(s3), "z_3y": round(z3, 2),
             "mean_5y": r1(m5), "sd_5y": r1(s5), "z_5y": round(z5, 2),
+            "mean_7y": r1(m7), "sd_7y": r1(s7), "z_7y": round(z7, 2),
+            "mean_blend": r1(mb), "sd_blend": r1(sb), "z_blend": round(zb, 2),
+            "years": round(n / 250, 1),
             "pct_5y": r1(sum(1 for v in w5 if v <= now) / len(w5) * 100),
             "pct_all": r1(sum(1 for v in disc if v <= now) / n * 100),
             "min_5y": r1(min(w5)), "max_5y": r1(max(w5)), "zone": zone,
@@ -329,7 +345,7 @@ def main():
         "data_through": max(c["last_date"] for c in result),
         "source": "ibindex.se price history CSV (price, reported and calculated NAV)",
         "threshold": THRESHOLD,
-        "windows": {"z": "3y = 750 trading days", "band": "%d months" % BAND_MONTHS, "forward": "%d trading days" % FWD},
+        "windows": {"z": "average of 5y (1250) and 7y (1750 trading days) mean and sd", "band": "%d months" % BAND_MONTHS, "forward": "%d trading days" % FWD},
         "companies": result,
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)

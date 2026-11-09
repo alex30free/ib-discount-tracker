@@ -36,6 +36,9 @@ FALLBACK = {
     "AJA B": "Byggmästare AJA B", "COLLAX": "Collaxio B", "FLAT B": "Flat Capital", "FLERIE": "Flerie",
     "NAXS": "NAXS", "SON": "Sonae, SGPS, S.A.", "SPLTN": "Spiltan Invest",
 }
+# Companies ibindex lists that this tracker leaves out on purpose (by ticker).
+EXCLUDE = {"FLERIE", "NAXS", "SON"}
+
 INDEX_FALLBACK = {"BURE", "CRED A", "INDU C", "INVE B", "KINV B", "LATO B", "LINC", "LUND B",
                   "SVOL B", "TRAC B", "VEFAB", "VNV", "ORES"}
 
@@ -94,7 +97,7 @@ def get_companies():
         everything = _product_list("/companies/getCompanies.req")
     seen, out = set(), []
     for tk, name in everything:
-        if tk not in seen:
+        if tk not in seen and tk not in EXCLUDE:
             seen.add(tk)
             out.append((tk, name, tk in index))
     return out
@@ -362,8 +365,9 @@ def main():
         print("Company list: %d companies" % len(companies))
     except Exception as exc:  # noqa: BLE001
         print("WARN could not read company list (%s), using fallback" % exc)
-        companies = ([(c["ticker"], c["name"], c.get("in_index", True)) for c in previous.values()]
-                     or [(tk, nm, tk in INDEX_FALLBACK) for tk, nm in FALLBACK.items()])
+        companies = ([(c["ticker"], c["name"], c.get("in_index", True)) for c in previous.values()
+                      if c["ticker"] not in EXCLUDE]
+                     or [(tk, nm, tk in INDEX_FALLBACK) for tk, nm in FALLBACK.items() if tk not in EXCLUDE])
 
     result, fresh = [], 0
     for ticker, name, in_index in companies:

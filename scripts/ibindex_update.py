@@ -195,9 +195,35 @@ def r1(x):
     return None if x is None else round(x, 1)
 
 
+SPLIT_MOVE = 0.30      # |log price change| in one day that hints at a split or spin-off
+SPLIT_MATCH = 0.05     # ... when NAV moved by (almost) the same ratio that day
+
+
+def adjusted_prices(dates, price, nav):
+    """Price index adjusted for splits and in-kind distributions.
+
+    ibindex's price history is not adjusted for share splits (e.g. Investor 4:1 in 2021)
+    or spin-offs. On a day when both price and NAV jump by about the same large ratio,
+    the jump is a corporate action, not a return: only the change in discount is kept.
+    """
+    import math
+    adj, events = [price[0]], []
+    for i in range(1, len(price)):
+        pr, nr = price[i] / price[i - 1], nav[i] / nav[i - 1]
+        lp, ln = math.log(pr), math.log(nr)
+        if abs(lp) > SPLIT_MOVE and abs(lp - ln) < SPLIT_MATCH:
+            step = pr / nr
+            events.append({"date": dates[i], "factor": round(1 / pr, 2)})
+        else:
+            step = pr
+        adj.append(adj[-1] * step)
+    return adj, events
+
+
 def analyse(rows):
     dates = [r[0] for r in rows]
-    price = [r[1] for r in rows]
+    raw_price = [r[1] for r in rows]
+    price, events = adjusted_prices(dates, raw_price, [r[2] for r in rows])
     disc = [(r[2] - r[1]) / r[2] * 100 for r in rows]
     n = len(disc)
     now = disc[-1]
@@ -276,7 +302,8 @@ def analyse(rows):
     return {
         "first_date": dates[0],
         "last_date": dates[-1],
-        "price": price[-1],
+        "price": raw_price[-1],
+        "corporate_actions": events,
         "monthly": {"start": mdates[0], "v": [r1(v) for v in mvals], "mu": mu, "hi": hi, "lo": lo},
         "now": {
             "disc": r1(now), "mean_1y": r1(m1), "mean_3y": r1(m3), "sd_3y": r1(s3), "z_3y": round(z3, 2),
@@ -326,8 +353,9 @@ def main():
                 print("WARN %-7s holdings failed (%s)%s" % (ticker, exc, ", kept previous" if old else ""))
             result.append(entry)
             fresh += 1
-            print("OK   %-7s %5d days, last %s, discount %+.1f%%, z3 %+.2f" % (
-                ticker, len(rows), entry["last_date"], entry["now"]["disc"], entry["now"]["z_3y"]))
+            print("OK   %-7s %5d days, last %s, discount %+.1f%%, z %+.2f%s" % (
+                ticker, len(rows), entry["last_date"], entry["now"]["disc"], entry["now"]["z_blend"],
+                "".join("  [split/spin-off %s, factor %s]" % (e["date"], e["factor"]) for e in entry["corporate_actions"])))
         except Exception as exc:  # noqa: BLE001
             if ticker in previous:
                 result.append(previous[ticker])

@@ -84,6 +84,11 @@
     .rules { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; }
     .rule { border: 1px solid var(--border2); border-radius: 5px; padding: 12px; font-size: 13px; line-height: 1.55; }
     .rule .t { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: .06em; margin-bottom: 4px; }
+    .readme { margin-top: 10px; font-size: 13px; color: var(--muted2); }
+    .readme summary { font-family: 'IBM Plex Mono', monospace; color: var(--accent2); cursor: pointer; font-size: 12px; }
+    .readme ul { margin: 8px 0 0 18px; line-height: 1.6; max-width: 900px; }
+    .readme li { margin-top: 4px; }
+    .readme b { color: var(--text); font-weight: 400; }
     .err { color: var(--sell); font-family: 'IBM Plex Mono', monospace; }
     .seg { display: inline-flex; border: 1px solid var(--border2); border-radius: 4px; overflow: hidden; }
     .seg button { background: var(--surface2); color: var(--muted2); border: 0; padding: 7px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; cursor: pointer; }
@@ -242,7 +247,18 @@
   <section class="card">
     <h2>Have the signals worked?</h2>
     <p class="note" id="bt-summary"></p>
-    <p class="note">Each trading day the company is placed in a zone using only the data available that day (its previous 5 and 7 years, so the test starts once a company has 5 years of history), then the share price change over the next 12 months (250 trading days) is measured. Price return excludes dividends. Discount change is in percentage points; negative means the discount narrowed.</p>
+    <p class="note">Each trading day the company is placed in a zone using only the data available that day (its previous 5 and 7 years, so the test starts once a company has 5 years of history), then the share price change over the next 12 months (250 trading days) is measured. Price return excludes dividends but is adjusted for share splits and spin-offs. Discount change is in percentage points; negative means the discount narrowed.</p>
+    <details class="readme">
+      <summary>How to read this table</summary>
+      <ul>
+        <li><b>12m return after buy zone</b>: imagine buying the share on <i>every</i> day the company was in the buy zone and selling exactly 12 months later. This is the average share price change of all those trades. Green = better than buying on any random day (the "all days" column).</li>
+        <li><b>Share up</b>: how many of those trades ended with a higher share price after 12 months. 75% means three out of four.</li>
+        <li><b>12m return after sell zone</b>: the same, but for days in the sell zone. Red = worse than a random day, which is what you would expect if the sell signal works.</li>
+        <li><b>12m return all days</b>: the benchmark, buying on any day regardless of zone.</li>
+        <li><b>Discount change</b>: how much the discount moved during those 12 months. In the buy zone you hope for a negative number (the unusually wide discount shrinks back towards normal); in the sell zone a positive one. The discount can return to normal while the share price still falls, if the whole market and the company's holdings fall at the same time.</li>
+        <li><b>Days buy / sell</b>: how many trading days the signal was on. Few days (for example under 50) usually means a single short episode, so treat that result with extra caution.</li>
+      </ul>
+    </details>
     <div class="tablewrap">
       <table>
         <thead><tr>
@@ -264,6 +280,8 @@
       <dd>(today − normal level) / σ, where the normal level is the average of the 5-year and 7-year averages and σ the average of the 5-year and 7-year standard deviations (5 years ≈ 1,250 and 7 years ≈ 1,750 trading days; shorter if a company has less history). Zones and tables use daily values. The average line in the charts is the simple average of month-end values over the last 5 or 7 years (or since the data starts, if shorter).</dd>
       <dt>Holdings</dt>
       <dd>The five largest listed holdings as a share of NAV, plus unlisted holdings as one total and cash or interest-bearing assets where significant, from ibindex's latest reported holdings (the date is shown with each company). Where ibindex files listed remainders or interest-bearing assets under unlisted, they are counted as listed and cash instead.</dd>
+      <dt>Share splits and spin-offs</dt>
+      <dd>ibindex's price history is not adjusted for share splits (for example Investor's 4:1 split in 2021) or distributions of shares to owners. When the price and NAV jump by about the same large ratio on one day, the backtest treats that day as a corporate action rather than a gain or loss.</dd>
       <dt>Caveats</dt>
       <dd>The 12-month windows overlap, so days within a zone are not independent observations and each company only has a handful of separate episodes. Returns exclude dividends. A discount can persist for a long time, and a company's normal level can shift permanently. Past patterns say nothing certain about the future.</dd>
     </dl>

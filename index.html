@@ -14,7 +14,7 @@
       --border: #1c2830; --border2: #253340;
       --text: #c8d8e8; --muted: #4a6070; --muted2: #6a8090; --white: #f0f4f8;
       --accent: #00e5a0; --accent2: #0099ff; --coral: #ff7a59;
-      --buy: #00e5a0; --sell: #ff5c6c; --line: #0099ff; --band: #2a3b4a; --ref: #6a8090;
+      --buy: #00e5a0; --sell: #ff5c6c; --line: #0099ff; --avg: #f0c040; --disc-tint: rgba(0,229,160,0.07); --band: #2a3b4a; --ref: #6a8090;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; font-weight: 300; min-height: 100vh; }
@@ -67,6 +67,14 @@
     details dt { color: var(--text); margin-top: 10px; }
     footer { border-top: 1px solid var(--border); padding-top: 14px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
     .err { color: var(--sell); font-family: 'IBM Plex Mono', monospace; }
+    .seg { display: inline-flex; border: 1px solid var(--border2); border-radius: 4px; overflow: hidden; }
+    .seg button { background: var(--surface2); color: var(--muted2); border: 0; padding: 7px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; cursor: pointer; }
+    .seg button + button { border-left: 1px solid var(--border2); }
+    .seg button[aria-pressed="true"] { background: var(--border2); color: var(--white); }
+    .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .stats { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 14px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+    .stats .lbl { color: var(--muted2); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; display: block; margin-bottom: 2px; }
+    .stats .val { color: var(--white); }
     .detail-body { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; margin-top: 14px; }
     .detail-body .chart { flex: 1 1 520px; min-width: 0; margin-top: 0; }
     .hold { flex: 0 1 270px; width: 270px; max-width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 14px; }
@@ -124,15 +132,21 @@
     <div class="head">
       <div>
         <h2>Discount / premium over time</h2>
-        <p class="note">Month-end values, with the company's largest holdings alongside. Premium plotted upwards, discount downwards. The shaded band is the trailing 36-month average ± 1 standard deviation: above the band the stock is unusually expensive (sell zone), below it unusually cheap (buy zone).</p>
+        <p class="note">Month-end values since 2014, with the company's largest holdings alongside. Premium plotted upwards, discount downwards (green area). The dashed line is the average over the chosen period, so you can see where today stands against it.</p>
       </div>
-      <select id="pick" aria-label="Choose company"></select>
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Average period">
+          <button type="button" data-years="5" aria-pressed="true">5y avg</button>
+          <button type="button" data-years="7" aria-pressed="false">7y avg</button>
+        </div>
+        <select id="pick" aria-label="Choose company"></select>
+      </div>
     </div>
+    <div class="stats" id="avg-stats"></div>
     <div class="legend">
-      <span><span class="sw" style="background:var(--line)"></span>Valuation</span>
-      <span><span class="sw sw-band"></span>36-month average ± 1σ</span>
-      <span><span class="sw" style="background:var(--buy)"></span>Month in buy zone</span>
-      <span><span class="sw" style="background:var(--sell)"></span>Month in sell zone</span>
+      <span><span class="sw" style="background:var(--line)"></span>Discount / premium</span>
+      <span><span class="sw" style="background:var(--avg); border-radius:2px; height:3px; vertical-align:3px"></span><span id="avg-legend">5-year average</span></span>
+      <span><span class="sw" style="background:rgba(0,229,160,0.25); border-radius:2px"></span>Discount area (price below NAV)</span>
     </div>
     <div class="detail-body">
       <div class="chart" id="c-detail"></div>
@@ -142,7 +156,7 @@
 
   <section class="card">
     <h2>All companies</h2>
-    <p class="note">Each on its own scale, since levels differ a lot between companies. Premium up, discount down. Click to show in the chart above.</p>
+    <p class="note">Each on its own scale, since levels differ a lot between companies. Premium up, discount down (green area); dashed line is the average for the chosen period. Click to show in the chart above.</p>
     <div class="grid" id="c-grid"></div>
   </section>
 
@@ -179,7 +193,7 @@
       <dt>Discount</dt>
       <dd>(NAV − price) / NAV. Positive is a discount, negative a premium. The daily calculated NAV is used where available (from November 2016, Linc from May 2021); before that the latest reported NAV.</dd>
       <dt>z-score and zones</dt>
-      <dd>(today − average) / standard deviation over the window. 3 years ≈ 750 trading days. Tables use daily values; the band in the charts uses month-end values and the previous 36 months, so the limits can differ slightly.</dd>
+      <dd>(today − average) / standard deviation over the window. 3 years ≈ 750 trading days. Zones and tables use daily values. The average line in the charts is the simple average of month-end values over the last 5 or 7 years (or since the data starts, if shorter).</dd>
       <dt>Holdings</dt>
       <dd>The five largest listed holdings as a share of NAV, plus unlisted holdings as one total and cash or interest-bearing assets where significant, from ibindex's latest reported holdings (the date is shown with each company). Where ibindex files listed remainders or interest-bearing assets under unlisted, they are counted as listed and cash instead.</dd>
       <dt>Caveats</dt>
@@ -196,7 +210,11 @@
 <script>
 (function () {
   const TH = 1;
-  let DATA = null, SEL = 'INVE B';
+  let DATA = null, SEL = 'INVE B', YEARS = 5;
+  function avgOf(rows, years) {
+    const n = years * 12, w = rows.slice(-n);
+    return { v: w.reduce((a, r) => a + r.v, 0) / w.length, from: w[0].date, full: rows.length >= n };
+  }
   const f1 = d3.format('.1f');
   const fz = d3.format('+.1f');
   const fval = (v) => v == null ? '–' : (v < 0 ? f1(-v) + '% premium' : f1(v) + '% discount');
@@ -291,40 +309,52 @@
     el.replaceChildren();
     const c = DATA.companies.find((d) => d.ticker === SEL) || DATA.companies[0];
     const rows = monthly(c).filter((r) => r.v != null);
-    const W = Math.max(300, el.clientWidth), H = 360, mt = 14, mb = 28;
-    const svg = d3.select(el).append('svg').attr('width', '100%').attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
-    const vals = rows.flatMap((r) => [r.v, r.hi, r.lo]).filter((v) => v != null);
-    const y = d3.scaleLinear(d3.extent(vals), [mt, H - mb]).nice();   // premium (negative) at the top
-    const yt = y.ticks(6);
-    const fa = (v) => v === 0 ? 'NAV' : d3.format('.0f')(Math.abs(v)) + '% ' + (v < 0 ? 'prem' : 'disc');
+    const avg = avgOf(rows, YEARS);
     const last = rows[rows.length - 1];
+    const avgName = (avg.full ? YEARS + 'y avg' : 'avg since ' + d3.utcFormat('%Y')(avg.from));
+
+    // stats line above the chart
+    const st = document.getElementById('avg-stats');
+    st.replaceChildren();
+    const diff = last.v - avg.v;   // >0: wider discount than average (cheaper)
+    [['Today', fval(last.v)], [avg.full ? YEARS + '-year average' : 'Average since ' + d3.utcFormat('%Y')(avg.from), fval(avg.v)],
+     ['Versus average', Math.abs(diff) < 0.05 ? 'at average' : (diff > 0 ? 'cheaper by ' : 'dearer by ') + f1(Math.abs(diff)) + ' pp']]
+      .forEach(([l, v], i) => {
+        const d = document.createElement('div');
+        const a = document.createElement('span'); a.className = 'lbl'; a.textContent = l;
+        const b = document.createElement('span'); b.className = 'val'; b.textContent = v;
+        if (i === 2 && Math.abs(diff) >= 0.05) b.style.color = diff > 0 ? 'var(--buy)' : 'var(--sell)';
+        d.append(a, b); st.appendChild(d);
+      });
+    document.getElementById('avg-legend').textContent = avg.full ? YEARS + '-year average' : 'Average since ' + d3.utcFormat('%Y')(avg.from);
+
+    const W = Math.max(300, el.clientWidth), H = 380, mt = 14, mb = 28;
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
+    const ext = d3.extent(rows.map((r) => r.v).concat([0, avg.v]));
+    const y = d3.scaleLinear(ext, [mt, H - mb]).nice();   // premium (negative) at the top
+    const yt = y.ticks(7);
+    const fa = (v) => v === 0 ? 'NAV' : d3.format('.0f')(Math.abs(v)) + '% ' + (v < 0 ? 'prem' : 'disc');
     const endLab = W < 560 ? fshort(last.v) : fval(last.v);
     const left = measure(svg, yt.map(fa)) + 10;
     const right = measure(svg, [endLab]) + 16;
     const x = d3.scaleUtc(d3.extent(rows, (r) => r.date), [left, W - right]);
+    const y0 = y(0);
+    // green discount area below the 0% line
+    svg.append('rect').attr('x', left).attr('width', W - right - left).attr('y', y0).attr('height', Math.max(0, H - mb - y0)).attr('fill', 'var(--disc-tint)');
     svg.append('g').selectAll('line').data(yt).join('line').attr('x1', left).attr('x2', W - right).attr('y1', y).attr('y2', y)
-      .attr('stroke', (v) => v === 0 ? 'var(--muted)' : 'var(--border)');
-    svg.append('g').selectAll('text').data(yt).join('text').attr('class', 'tick').attr('x', left - 8).attr('y', y).attr('dy', '0.32em').attr('text-anchor', 'end').attr('fill', (v) => v < 0 ? 'var(--coral)' : null).text(fa);
+      .attr('stroke', 'var(--border)');
+    svg.append('line').attr('x1', left).attr('x2', W - right).attr('y1', y0).attr('y2', y0).attr('stroke', 'var(--muted2)').attr('stroke-width', 1.5);
+    svg.append('g').selectAll('text').data(yt).join('text').attr('class', 'tick').attr('x', left - 8).attr('y', y).attr('dy', '0.32em').attr('text-anchor', 'end').text(fa);
     svg.append('g').selectAll('text').data(x.ticks(W < 560 ? 4 : 8)).join('text').attr('class', 'tick').attr('x', x).attr('y', H - 8).attr('text-anchor', 'middle').text(d3.utcFormat('%Y'));
-    const [lo, hi] = y.domain();
-    // Premium side (above the 0% line) gets a faint tint; labels sit on either side of the 0% line.
-    const y0 = (lo < 0 && hi > 0) ? y(0) : (hi <= 0 ? H - mb : mt);
-    if (lo < 0) svg.append('rect').attr('x', left).attr('width', W - right - left).attr('y', mt).attr('height', Math.max(0, y0 - mt)).attr('fill', 'var(--coral)').attr('opacity', 0.05);
-    if (lo < 0 && hi > 0) {
-      svg.append('line').attr('x1', left).attr('x2', W - right).attr('y1', y0).attr('y2', y0).attr('stroke', 'var(--muted2)').attr('stroke-width', 1.5);
-    }
-    if (!(lo < 0 && hi > 0)) {
-      svg.append('text').attr('class', 'zone').attr('x', left + 6).attr('y', mt + 12).attr('fill', lo < 0 ? 'var(--coral)' : 'var(--muted2)').text(lo < 0 ? 'ENTIRE PERIOD AT A PREMIUM' : 'ENTIRE PERIOD AT A DISCOUNT');
-    }
-    svg.append('path').datum(rows).attr('d', d3.area().defined((r) => r.hi != null && r.lo != null).x((r) => x(r.date)).y0((r) => y(r.lo)).y1((r) => y(r.hi)))
-      .attr('fill', 'var(--band)').attr('opacity', 0.75);
-    svg.append('path').datum(rows).attr('d', d3.line().defined((r) => r.mu != null).x((r) => x(r.date)).y((r) => y(r.mu)))
-      .attr('fill', 'none').attr('stroke', 'var(--ref)').attr('stroke-dasharray', '4 3');
+    // average line across the chart
+    const ya = y(avg.v);
+    svg.append('line').attr('x1', left).attr('x2', W - right).attr('y1', ya).attr('y2', ya).attr('stroke', 'var(--avg)').attr('stroke-width', 1.5).attr('stroke-dasharray', '5 4');
+    const avgText = avgName + ' ' + fshort(avg.v);
+    const labAbove = ya - mt > 18;
+    svg.append('text').attr('class', 'zone').attr('x', left + 6).attr('y', labAbove ? ya - 6 : ya + 14).attr('fill', 'var(--avg)').text(avgText);
+    // the series
     svg.append('path').datum(rows).attr('d', d3.line().x((r) => x(r.date)).y((r) => y(r.v)))
       .attr('fill', 'none').attr('stroke', 'var(--line)').attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round');
-    const flagged = rows.filter((r) => r.hi != null && (r.v >= r.hi || r.v <= r.lo));
-    svg.append('g').selectAll('circle').data(flagged).join('circle').attr('cx', (r) => x(r.date)).attr('cy', (r) => y(r.v)).attr('r', 3)
-      .attr('fill', (r) => r.v >= r.hi ? 'var(--buy)' : 'var(--sell)');
     svg.append('circle').attr('cx', x(last.date)).attr('cy', y(last.v)).attr('r', 4).attr('fill', 'var(--line)');
     svg.append('text').attr('class', 'tick').attr('x', x(last.date) + 8).attr('y', y(last.v)).attr('dy', '0.32em').attr('fill', 'var(--white)').text(endLab);
     const t = tip(el);
@@ -340,10 +370,9 @@
         hover.style('display', null);
         rule.attr('x1', x(r.date)).attr('x2', x(r.date));
         dot.attr('cx', x(r.date)).attr('cy', y(r.v));
-        const lines = [[c.name + ' · ' + fmonth(r.date), true], [fval(r.v)]];
-        if (r.mu != null) lines.push(['36m avg ' + fval(r.mu)], ['Buy below  ' + fval(r.hi)], ['Sell above ' + fval(r.lo)]);
         const er = el.getBoundingClientRect(), sr = svg.node().getBoundingClientRect(), sc = sr.width / W;
-        showTip(el, t, lines, x(r.date) * sc + sr.left - er.left, y(r.v) * sc + sr.top - er.top);
+        showTip(el, t, [[c.name + ' · ' + fmonth(r.date), true], [fval(r.v)], [avgName + ' ' + fval(avg.v), true]],
+          x(r.date) * sc + sr.left - er.left, y(r.v) * sc + sr.top - er.top);
       })
       .on('pointerleave', () => { hover.style('display', 'none'); t.hidden = true; });
   }
@@ -389,16 +418,16 @@
       b.addEventListener('click', () => select(c.ticker, true));
       const head = document.createElement('div'); head.className = 'mini-head';
       const n = document.createElement('span'); n.className = 'mini-name'; n.textContent = c.name;
-      const v = document.createElement('span'); v.className = 'mini-val ' + zcls(c.now.z_3y); v.textContent = fshort(last.v);
+      const v = document.createElement('span'); v.className = 'mini-val'; v.textContent = fshort(last.v);
       head.append(n, v); b.appendChild(head); el.appendChild(b);
       const w = Math.max(140, b.clientWidth - 20), h = 80;
       const svg = d3.select(b).append('svg').attr('width', '100%').attr('height', h).attr('viewBox', `0 0 ${w} ${h}`).style('display', 'block').style('margin-top', '6px');
-      const vals = rows.flatMap((r) => [r.v, r.hi, r.lo]).filter((q) => q != null);
+      const avg = avgOf(rows, YEARS);
       const x = d3.scaleUtc(d3.extent(rows, (r) => r.date), [2, w - 6]);
-      const y = d3.scaleLinear(d3.extent(vals), [4, h - 4]);
-      const [lo, hi] = y.domain();
-      if (lo < 0 && hi > 0) svg.append('line').attr('x1', 2).attr('x2', w - 6).attr('y1', y(0)).attr('y2', y(0)).attr('stroke', 'var(--muted)');
-      svg.append('path').datum(rows).attr('d', d3.area().defined((r) => r.hi != null).x((r) => x(r.date)).y0((r) => y(r.lo)).y1((r) => y(r.hi))).attr('fill', 'var(--band)').attr('opacity', 0.75);
+      const y = d3.scaleLinear(d3.extent(rows.map((r) => r.v).concat([0])), [4, h - 4]);
+      svg.append('rect').attr('x', 2).attr('width', w - 8).attr('y', y(0)).attr('height', Math.max(0, h - 4 - y(0))).attr('fill', 'var(--disc-tint)');
+      svg.append('line').attr('x1', 2).attr('x2', w - 6).attr('y1', y(0)).attr('y2', y(0)).attr('stroke', 'var(--muted)');
+      svg.append('line').attr('x1', 2).attr('x2', w - 6).attr('y1', y(avg.v)).attr('y2', y(avg.v)).attr('stroke', 'var(--avg)').attr('stroke-dasharray', '4 3');
       svg.append('path').datum(rows).attr('d', d3.line().x((r) => x(r.date)).y((r) => y(r.v))).attr('fill', 'none').attr('stroke', 'var(--line)').attr('stroke-width', 1.5).attr('stroke-linejoin', 'round');
       svg.append('circle').attr('cx', x(last.date)).attr('cy', y(last.v)).attr('r', 3).attr('fill', 'var(--line)');
     });
@@ -454,6 +483,11 @@
       d.companies.forEach((c) => pick.appendChild(new Option(c.name, c.ticker)));
       pick.value = SEL;
       pick.addEventListener('change', () => select(pick.value, false));
+      document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => {
+        YEARS = Number(b.dataset.years);
+        document.querySelectorAll('.seg button').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+        drawDetail(); drawGrid();
+      }));
       drawKpis(); drawTables(); drawAll();
       let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(drawAll, 150); });
     })

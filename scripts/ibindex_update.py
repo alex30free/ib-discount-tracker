@@ -37,7 +37,7 @@ FALLBACK = {
     "NAXS": "NAXS", "SON": "Sonae, SGPS, S.A.", "SPLTN": "Spiltan Invest",
 }
 # Companies ibindex lists that this tracker leaves out on purpose (by ticker).
-EXCLUDE = {"FLERIE", "NAXS", "SON"}
+EXCLUDE = {"FLERIE", "NAXS", "SON", "COLLAX"}
 
 INDEX_FALLBACK = {"BURE", "CRED A", "INDU C", "INVE B", "KINV B", "LATO B", "LINC", "LUND B",
                   "SVOL B", "TRAC B", "VEFAB", "VNV", "ORES"}

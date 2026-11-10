@@ -107,6 +107,8 @@
     .trend-stats .val { color: var(--white); }
     .trend-badge { display: inline-block; margin-top: 10px; padding: 3px 8px; border-radius: 3px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .06em; }
     .trend-chart { margin-top: 8px; }
+    .close-btn { background: var(--surface2); color: var(--muted2); border: 1px solid var(--border2); border-radius: 4px; padding: 7px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; cursor: pointer; }
+    .close-btn:hover { color: var(--white); }
     .trend-more { display: inline-block; margin-top: 6px; font-size: 11px; font-family: 'IBM Plex Mono', monospace; }
     .hold-title { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted2); }
     .hold-date { font-size: 11px; color: var(--muted); margin-top: 2px; }
@@ -235,13 +237,14 @@
     </div>
   </section>
 
-  <section class="card" id="price">
+  <section class="card" id="price" hidden>
     <div class="head">
       <div>
         <h2>Share price and 40-week moving average · <span id="price-name">–</span></h2>
         <p class="note">Weekly closing price in SEK, adjusted for share splits so the history is comparable. The 40-week moving average is the average of the last 40 weekly closes (about 9 months) and shows the longer trend: price above the line means the trend is up, price below means it is down.</p>
       </div>
       <div class="controls">
+        <button type="button" class="close-btn" id="price-close" aria-label="Close the full price chart">Close ✕</button>
         <div class="seg" id="range-seg" role="group" aria-label="Period">
           <button type="button" data-weeks="104" aria-pressed="false">2y</button>
           <button type="button" data-weeks="260" aria-pressed="true">5y</button>
@@ -572,7 +575,16 @@
   const fprice = (v) => v == null ? '–' : (v < 10 ? d3.format('.2f')(v) : d3.format(',.1f')(v)) + ' kr';
   const fday = d3.utcFormat('%-d %b %Y');
 
+  function showPrice(open) {
+    const card = document.getElementById('price');
+    card.hidden = !open;
+    if (open) { drawPrice(); card.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    else document.getElementById('detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    drawTrend();
+  }
+
   function drawPrice() {
+    if (document.getElementById('price').hidden) return;
     const el = document.getElementById('c-price');
     el.replaceChildren();
     const st = document.getElementById('price-stats');
@@ -669,8 +681,10 @@
     svg.append('circle').attr('cx', x(last.date)).attr('cy', y(last.v)).attr('r', 3).attr('fill', 'var(--white)');
     svg.append('text').attr('class', 'tick').attr('x', 2).attr('y', H - 2).text(d3.utcFormat('%b %Y')(rows[0].date));
     svg.append('text').attr('class', 'tick').attr('x', W - 6).attr('y', H - 2).attr('text-anchor', 'end').text('2 years');
-    const a = add('a', 'trend-more', 'Full price chart ↓');
+    const open = !document.getElementById('price').hidden;
+    const a = add('a', 'trend-more', open ? 'Hide full price chart ↑' : 'Full price chart ↓');
     a.href = '#price';
+    a.addEventListener('click', (e) => { e.preventDefault(); showPrice(!open); });
   }
 
   function drawHoldings() {
@@ -780,6 +794,7 @@
       d.companies.forEach((c) => pick.appendChild(new Option(c.name, c.ticker)));
       pick.value = SEL;
       pick.addEventListener('change', () => select(pick.value, false));
+      document.getElementById('price-close').addEventListener('click', () => showPrice(false));
       document.querySelectorAll('#range-seg button').forEach((b) => b.addEventListener('click', () => {
         WEEKS = Number(b.dataset.weeks);
         document.querySelectorAll('#range-seg button').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));

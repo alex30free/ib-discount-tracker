@@ -98,9 +98,16 @@
     .stats { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 14px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
     .stats .lbl { color: var(--muted2); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; display: block; margin-bottom: 2px; }
     .stats .val { color: var(--white); }
-    .detail-body { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; margin-top: 14px; }
-    .detail-body .chart { flex: 1 1 520px; min-width: 0; margin-top: 0; }
-    .hold { flex: 0 1 270px; width: 270px; max-width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 14px; }
+    .detail-grid { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+    .detail-main { flex: 1 1 520px; min-width: 0; }
+    .side { flex: 0 1 290px; width: 290px; max-width: 100%; display: flex; flex-direction: column; gap: 14px; }
+    .hold { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 14px; }
+    .trend-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-top: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+    .trend-stats .lbl { display: block; color: var(--muted2); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+    .trend-stats .val { color: var(--white); }
+    .trend-badge { display: inline-block; margin-top: 10px; padding: 3px 8px; border-radius: 3px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .06em; }
+    .trend-chart { margin-top: 8px; }
+    .trend-more { display: inline-block; margin-top: 6px; font-size: 11px; font-family: 'IBM Plex Mono', monospace; }
     .hold-title { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted2); }
     .hold-date { font-size: 11px; color: var(--muted); margin-top: 2px; }
     .hold-row { margin-top: 10px; }
@@ -113,7 +120,7 @@
     .hold-bar i.csh { background: var(--muted2); }
     .hold-sep { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 2px; }
     .hold-note { font-size: 11px; color: var(--muted); margin-top: 12px; line-height: 1.5; }
-    @media (max-width: 860px) { .hold { width: 100%; flex-basis: 100%; } }
+    @media (max-width: 860px) { .side { width: 100%; flex-basis: 100%; } }
   </style>
 </head>
 <body>
@@ -202,28 +209,29 @@
   </section>
 
   <section class="card" id="detail">
-    <div class="head">
-      <div>
+    <div class="detail-grid">
+      <div class="detail-main">
         <h2>Discount / premium over time</h2>
-        <p class="note">Month-end values since 2014, with the company's largest holdings alongside. Premium plotted upwards, discount downwards (green area). The dashed line is the average over the chosen period, so you can see where today stands against it.</p>
-      </div>
-      <div class="controls">
-        <div class="seg" id="avg-seg" role="group" aria-label="Average period">
-          <button type="button" data-years="7" aria-pressed="true">7y avg</button>
-          <button type="button" data-years="5" aria-pressed="false">5y avg</button>
+        <p class="note">Month-end values since 2014. Premium plotted upwards, discount downwards (green area). The dashed line is the average over the chosen period, so you can see where today stands against it.</p>
+        <div class="controls" style="margin-top:12px">
+          <div class="seg" id="avg-seg" role="group" aria-label="Average period">
+            <button type="button" data-years="7" aria-pressed="true">7y avg</button>
+            <button type="button" data-years="5" aria-pressed="false">5y avg</button>
+          </div>
+          <select id="pick" aria-label="Choose company"></select>
         </div>
-        <select id="pick" aria-label="Choose company"></select>
+        <div class="stats" id="avg-stats"></div>
+        <div class="legend">
+          <span><span class="sw" style="background:var(--line)"></span>Discount / premium</span>
+          <span><span class="sw" style="background:var(--avg); border-radius:2px; height:3px; vertical-align:3px"></span><span id="avg-legend">7-year average</span></span>
+          <span><span class="sw" style="background:rgba(0,229,160,0.25); border-radius:2px"></span>Discount area (price below NAV)</span>
+        </div>
+        <div class="chart" id="c-detail"></div>
       </div>
-    </div>
-    <div class="stats" id="avg-stats"></div>
-    <div class="legend">
-      <span><span class="sw" style="background:var(--line)"></span>Discount / premium</span>
-      <span><span class="sw" style="background:var(--avg); border-radius:2px; height:3px; vertical-align:3px"></span><span id="avg-legend">7-year average</span></span>
-      <span><span class="sw" style="background:rgba(0,229,160,0.25); border-radius:2px"></span>Discount area (price below NAV)</span>
-    </div>
-    <div class="detail-body">
-      <div class="chart" id="c-detail"></div>
-      <aside class="hold" id="c-hold" aria-label="Largest holdings"></aside>
+      <div class="side">
+        <aside class="hold trend" id="c-trend" aria-label="Share price trend"></aside>
+        <aside class="hold" id="c-hold" aria-label="Largest holdings"></aside>
+      </div>
     </div>
   </section>
 
@@ -376,7 +384,7 @@
   function select(tk, scroll) {
     SEL = tk;
     document.getElementById('pick').value = tk;
-    drawDetail(); drawHoldings(); drawPrice(); drawGrid();
+    drawDetail(); drawTrend(); drawHoldings(); drawPrice(); drawGrid();
     if (scroll) document.getElementById('detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -631,6 +639,40 @@
       .on('pointerleave', () => { hover.style('display', 'none'); t.hidden = true; });
   }
 
+  function drawTrend() {
+    const el = document.getElementById('c-trend');
+    el.replaceChildren();
+    const c = DATA.companies.find((d) => d.ticker === SEL) || DATA.companies[0];
+    const add = (tag, cls, text, parent) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; (parent || el).appendChild(e); return e; };
+    add('div', 'hold-title', 'Share price · 40-week MA');
+    const all = weeklyRows(c);
+    const ms = maStatus(c);
+    if (!all.length || !ms) { add('div', 'hold-note', 'Price trend appears after the next weekly data update.'); return; }
+    const badge = add('div', 'trend-badge', ms.above ? '▲ ABOVE MA40 · UPTREND' : '▼ BELOW MA40 · DOWNTREND');
+    badge.style.color = ms.above ? 'var(--buy)' : 'var(--sell)';
+    badge.style.background = ms.above ? 'rgba(0,229,160,0.10)' : 'rgba(255,92,108,0.10)';
+    const g = add('div', 'trend-stats');
+    [['Close', fprice(ms.last.v)], ['MA40', fprice(ms.last.ma)],
+     ['vs MA40', (ms.diff >= 0 ? '+' : '') + f1(ms.diff) + '%'], [ms.above ? 'Above since' : 'Below since', d3.utcFormat('%-d %b %Y')(ms.since)]]
+      .forEach(([l, v], i) => { const d = add('div', null, null, g); add('span', 'lbl', l, d); const b = add('span', 'val', v, d); if (i === 2) b.style.color = ms.above ? 'var(--buy)' : 'var(--sell)'; });
+    const rows = all.slice(-104);
+    const box = add('div', 'trend-chart');
+    const W = Math.max(200, el.clientWidth - 28), H = 120;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('height', H).attr('viewBox', `0 0 ${W} ${H}`).style('display', 'block');
+    const x = d3.scaleUtc(d3.extent(rows, (r) => r.date), [2, W - 6]);
+    const y = d3.scaleLinear(d3.extent(rows.flatMap((r) => r.ma == null ? [r.v] : [r.v, r.ma])), [H - 16, 6]).nice();
+    svg.append('path').datum(rows).attr('d', d3.line().defined((r) => r.ma != null).x((r) => x(r.date)).y((r) => y(r.ma)))
+      .attr('fill', 'none').attr('stroke', 'var(--avg)').attr('stroke-width', 2);
+    svg.append('path').datum(rows).attr('d', d3.line().x((r) => x(r.date)).y((r) => y(r.v)))
+      .attr('fill', 'none').attr('stroke', 'var(--white)').attr('stroke-width', 1.3).attr('stroke-linejoin', 'round');
+    const last = rows[rows.length - 1];
+    svg.append('circle').attr('cx', x(last.date)).attr('cy', y(last.v)).attr('r', 3).attr('fill', 'var(--white)');
+    svg.append('text').attr('class', 'tick').attr('x', 2).attr('y', H - 2).text(d3.utcFormat('%b %Y')(rows[0].date));
+    svg.append('text').attr('class', 'tick').attr('x', W - 6).attr('y', H - 2).attr('text-anchor', 'end').text('2 years');
+    const a = add('a', 'trend-more', 'Full price chart ↓');
+    a.href = '#price';
+  }
+
   function drawHoldings() {
     const el = document.getElementById('c-hold');
     el.replaceChildren();
@@ -726,7 +768,7 @@
     parts.forEach((x) => { if (typeof x === 'string') p.appendChild(document.createTextNode(x)); else { const s = document.createElement('strong'); s.textContent = x[0]; if (x[1]) s.className = x[1]; p.appendChild(s); } });
   }
 
-  function drawAll() { drawOverview(); drawDetail(); drawHoldings(); drawPrice(); drawGrid(); if (document.getElementById('learn').open) drawExample(); }
+  function drawAll() { drawOverview(); drawDetail(); drawTrend(); drawHoldings(); drawPrice(); drawGrid(); if (document.getElementById('learn').open) drawExample(); }
 
   fetch('data.json', { cache: 'no-cache' })
     .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })

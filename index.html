@@ -128,7 +128,7 @@
   <header>
     <h1>Investment Company<br><em>Discount Tracker</em></h1>
     <p class="lede">Discount or premium to net asset value for the Swedish investment companies tracked by ibindex.se, compared with each company's own history.
-      Each company's <strong>normal level</strong> is the average of its 5-year and 7-year averages.
+      Each company's <strong>normal level</strong> is its 7-year average.
       <strong>Buy zone</strong>: today's discount is at least 1 standard deviation wider than that normal level.
       <strong>Sell zone</strong>: at least 1 standard deviation narrower. Updated automatically every Friday.</p>
   </header>
@@ -158,8 +158,8 @@
       </div>
       <div class="step">
         <h3>4 · Average and σ (sigma)</h3>
-        <p>We look at the last <b>5 years</b> and the last <b>7 years</b> of daily values, and blend them:</p>
-        <p><b>Normal level</b>: the average of the 5-year average and the 7-year average. Using two periods makes it less sensitive to one unusual stretch.<br><b>σ, standard deviation</b>: how much it normally swings around its average (again the mean of the 5- and 7-year values). Small σ = calm and stable; large σ = it jumps around a lot.</p>
+        <p>We look at the last <b>7 years</b> of daily values (or all data, if a company is younger) and calculate two things:</p>
+        <p><b>Normal level</b>: the 7-year average discount or premium. A long period covers both good and bad markets.<br><b>σ, standard deviation</b>: how much it normally swings around that average over the same 7 years. Small σ = calm and stable; large σ = it jumps around a lot.</p>
         <p>As a rule of thumb, values stay within ±1σ of the average about <b>two-thirds of the time</b>, and beyond ±2σ only about <b>1 time in 20</b>.</p>
       </div>
       <div class="step">
@@ -191,7 +191,7 @@
 
   <section class="card" id="overview">
     <h2>Where does each company stand today?</h2>
-    <p class="note">Distance from the company's own normal level (average of its 5- and 7-year averages), in standard deviations (z-score). On the right: current valuation and the normal level. Click a company to see its history. <a href="#learn" id="learn-link">What does this mean?</a></p>
+    <p class="note">Distance from the company's own normal level (its 7-year average), in standard deviations (z-score). On the right: current valuation and the normal level. Click a company to see its history. <a href="#learn" id="learn-link">What does this mean?</a></p>
     <div class="legend">
       <span><span class="sw" style="background:var(--buy)"></span>Buy zone</span>
       <span><span class="sw" style="background:var(--sell)"></span>Sell zone</span>
@@ -208,10 +208,9 @@
         <p class="note">Month-end values since 2014, with the company's largest holdings alongside. Premium plotted upwards, discount downwards (green area). The dashed line is the average over the chosen period, so you can see where today stands against it.</p>
       </div>
       <div class="controls">
-        <div class="seg" role="group" aria-label="Average period">
-          <button type="button" data-years="blend" aria-pressed="true">5+7y avg</button>
-          <button type="button" data-years="5" aria-pressed="false">5y</button>
-          <button type="button" data-years="7" aria-pressed="false">7y</button>
+        <div class="seg" id="avg-seg" role="group" aria-label="Average period">
+          <button type="button" data-years="7" aria-pressed="true">7y avg</button>
+          <button type="button" data-years="5" aria-pressed="false">5y avg</button>
         </div>
         <select id="pick" aria-label="Choose company"></select>
       </div>
@@ -219,13 +218,35 @@
     <div class="stats" id="avg-stats"></div>
     <div class="legend">
       <span><span class="sw" style="background:var(--line)"></span>Discount / premium</span>
-      <span><span class="sw" style="background:var(--avg); border-radius:2px; height:3px; vertical-align:3px"></span><span id="avg-legend">5- and 7-year average</span></span>
+      <span><span class="sw" style="background:var(--avg); border-radius:2px; height:3px; vertical-align:3px"></span><span id="avg-legend">7-year average</span></span>
       <span><span class="sw" style="background:rgba(0,229,160,0.25); border-radius:2px"></span>Discount area (price below NAV)</span>
     </div>
     <div class="detail-body">
       <div class="chart" id="c-detail"></div>
       <aside class="hold" id="c-hold" aria-label="Largest holdings"></aside>
     </div>
+  </section>
+
+  <section class="card" id="price">
+    <div class="head">
+      <div>
+        <h2>Share price and 40-week moving average · <span id="price-name">–</span></h2>
+        <p class="note">Weekly closing price in SEK, adjusted for share splits so the history is comparable. The 40-week moving average is the average of the last 40 weekly closes (about 9 months) and shows the longer trend: price above the line means the trend is up, price below means it is down.</p>
+      </div>
+      <div class="controls">
+        <div class="seg" id="range-seg" role="group" aria-label="Period">
+          <button type="button" data-weeks="104" aria-pressed="false">2y</button>
+          <button type="button" data-weeks="260" aria-pressed="true">5y</button>
+          <button type="button" data-weeks="0" aria-pressed="false">All</button>
+        </div>
+      </div>
+    </div>
+    <div class="stats" id="price-stats"></div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--white)"></span>Weekly close</span>
+      <span><span class="sw" style="background:var(--avg); border-radius:2px; height:3px; vertical-align:3px"></span>40-week moving average</span>
+    </div>
+    <div class="chart" id="c-price"></div>
   </section>
 
   <section class="card">
@@ -239,7 +260,7 @@
     <p class="note">Computed on daily values. Percentile: share of days over the last five years with a smaller discount than today. ° = tracked by ibindex but not part of the ibindex index itself.</p>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Company</th><th>Today</th><th>5y average</th><th>7y average</th><th>Normal level<br>(5y+7y)/2</th><th>σ</th><th>z</th><th>Percentile 5y</th><th>Zone</th></tr></thead>
+        <thead><tr><th>Company</th><th>Today</th><th>5y average</th><th>7y average<br>(normal level)</th><th>σ 7y</th><th>z</th><th>Percentile 5y</th><th>Zone</th><th>Price vs<br>40w average</th></tr></thead>
         <tbody id="t-now"></tbody>
       </table>
     </div>
@@ -248,7 +269,7 @@
   <section class="card">
     <h2>Have the signals worked?</h2>
     <p class="note" id="bt-summary"></p>
-    <p class="note">Each trading day the company is placed in a zone using only the data available that day (its previous 5 and 7 years, so the test starts once a company has 5 years of history), then the share price change over the next 12 months (250 trading days) is measured. Price return excludes dividends but is adjusted for share splits and spin-offs. Discount change is in percentage points; negative means the discount narrowed.</p>
+    <p class="note">Each trading day the company is placed in a zone using only the data available that day (its previous 7 years, or all earlier data if less; the test starts once a company has 5 years of history), then the share price change over the next 12 months (250 trading days) is measured. Price return excludes dividends but is adjusted for share splits and spin-offs. Discount change is in percentage points; negative means the discount narrowed.</p>
     <details class="readme">
       <summary>How to read this table</summary>
       <ul>
@@ -278,7 +299,7 @@
       <dt>Discount</dt>
       <dd>(NAV − price) / NAV. Positive is a discount, negative a premium. The daily calculated NAV is used where available (from November 2016, Linc from May 2021); before that the latest reported NAV.</dd>
       <dt>z-score and zones</dt>
-      <dd>(today − normal level) / σ, where the normal level is the average of the 5-year and 7-year averages and σ the average of the 5-year and 7-year standard deviations (5 years ≈ 1,250 and 7 years ≈ 1,750 trading days; shorter if a company has less history). Zones and tables use daily values. The average line in the charts is the simple average of month-end values over the last 5 or 7 years (or since the data starts, if shorter).</dd>
+      <dd>(today − 7-year average) / 7-year standard deviation, over about 1,750 trading days (all data if a company has less). Zones and tables use daily values. The average line in the charts is the simple average of month-end values over the last 5 or 7 years (or since the data starts, if shorter).</dd>
       <dt>Holdings</dt>
       <dd>The five largest listed holdings as a share of NAV, plus unlisted holdings as one total and cash or interest-bearing assets where significant, from ibindex's latest reported holdings (the date is shown with each company). Where ibindex files listed remainders or interest-bearing assets under unlisted, they are counted as listed and cash instead.</dd>
       <dt>Share splits and spin-offs</dt>
@@ -297,9 +318,9 @@
 <script>
 (function () {
   const TH = 1;
-  let DATA = null, SEL = 'INVE B', YEARS = 'blend';
+  let DATA = null, SEL = 'INVE B', YEARS = 7;
   function avgOf(rows, years) {
-    if (years === 'blend') {
+    if (years === 'blend') {  // kept for older links; not offered in the UI
       const a5 = avgOf(rows, 5), a7 = avgOf(rows, 7);
       return { v: (a5.v + a7.v) / 2, from: a7.from, full: a7.full, blend: true };
     }
@@ -311,11 +332,11 @@
     if (a.blend) return short ? '5+7y avg' : '5- and 7-year average';
     return short ? YEARS + 'y avg' : YEARS + '-year average';
   }
-  // Zone statistics: blended 5y/7y if the data has it, otherwise the older 3-year fields.
+  // Zone statistics: the 7-year average and σ (older data files fall back to the 3-year fields).
   function Z(c) {
     const n = c.now;
-    if (n.zone === 'short') return { z: null, mean: n.mean_blend, sd: n.sd_blend, short: true };
-    if (n.z_blend != null) return { z: n.z_blend, mean: n.mean_blend, sd: n.sd_blend };
+    if (n.zone === 'short') return { z: null, mean: n.mean_7y, sd: n.sd_7y, short: true };
+    if (n.z_7y != null) return { z: n.z_7y, mean: n.mean_7y, sd: n.sd_7y };
     return { z: n.z_3y, mean: n.mean_3y, sd: n.sd_3y };
   }
   const f1 = d3.format('.1f');
@@ -355,7 +376,7 @@
   function select(tk, scroll) {
     SEL = tk;
     document.getElementById('pick').value = tk;
-    drawDetail(); drawHoldings(); drawGrid();
+    drawDetail(); drawHoldings(); drawPrice(); drawGrid();
     if (scroll) document.getElementById('detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -366,9 +387,7 @@
     const zone = z >= TH ? 'the buy zone: unusually cheap compared with its own history'
       : (z <= -TH ? 'the sell zone: unusually expensive compared with its own history' : 'neutral territory');
     const p = document.getElementById('ex-text');
-    const intro = n.mean_blend != null
-      ? 'For ' + c.name + ' the 5-year average is ' + fval(n.mean_5y) + ' and the 7-year average ' + fval(n.mean_7y) + ', so its normal level is ' + fval(zs.mean)
-      : 'For ' + c.name + ' the normal level is ' + fval(zs.mean);
+    const intro = 'Over the last ' + (n.years != null && n.years < 7 ? f1(n.years) : '7') + ' years ' + c.name + ' has on average been at ' + fval(zs.mean) + ' (its normal level)';
     p.textContent = intro + ', and it usually swings about ' + f1(zs.sd) + ' percentage points around that (that is its σ). Today it is at ' + fval(n.disc) +
       '. Written as a discount, a premium is a negative number, so z = (' + f1(n.disc) + ' − ' + f1(zs.mean) + ') ÷ ' + f1(zs.sd) + ' = ' + fz(z) +
       '. In words: today is ' + f1(Math.abs(z)) + ' normal swings ' + (z < 0 ? 'more expensive' : 'cheaper') + ' than usual, which puts it in ' + zone + '.';
@@ -521,6 +540,97 @@
       .on('pointerleave', () => { hover.style('display', 'none'); t.hidden = true; });
   }
 
+  let WEEKS = 260;
+  function weeklyRows(c) {
+    if (!c.weekly || !c.weekly.close) return [];
+    const [y, m, d] = c.weekly.start.split('-').map(Number);
+    const t0 = Date.UTC(y, m - 1, d + 4);   // Friday of the first week
+    const cl = c.weekly.close;
+    return cl.map((v, i) => {
+      let ma = null;
+      if (i >= 39) { const w = cl.slice(i - 39, i + 1); if (w.every((q) => q != null)) ma = w.reduce((a, q) => a + q, 0) / 40; }
+      return { date: new Date(t0 + i * 7 * 864e5), v, ma };
+    }).filter((r) => r.v != null);
+  }
+  function maStatus(c) {
+    const rows = weeklyRows(c);
+    const last = rows[rows.length - 1];
+    if (!last || last.ma == null) return null;
+    let k = rows.length - 1;
+    const above = last.v >= last.ma;
+    while (k > 0 && rows[k - 1].ma != null && (rows[k - 1].v >= rows[k - 1].ma) === above) k--;
+    return { last, above, diff: (last.v / last.ma - 1) * 100, since: rows[k].date };
+  }
+  const fprice = (v) => v == null ? '–' : (v < 10 ? d3.format('.2f')(v) : d3.format(',.1f')(v)) + ' kr';
+  const fday = d3.utcFormat('%-d %b %Y');
+
+  function drawPrice() {
+    const el = document.getElementById('c-price');
+    el.replaceChildren();
+    const st = document.getElementById('price-stats');
+    st.replaceChildren();
+    const c = DATA.companies.find((d) => d.ticker === SEL) || DATA.companies[0];
+    document.getElementById('price-name').textContent = c.name;
+    let rows = weeklyRows(c);
+    if (!rows.length) {
+      const p = document.createElement('p'); p.className = 'note'; p.textContent = 'The price history appears after the next weekly data update.'; el.appendChild(p); return;
+    }
+    const ms = maStatus(c);
+    const items = [['Last close', fprice(rows[rows.length - 1].v)], ['40-week average', ms ? fprice(ms.last.ma) : '–']];
+    if (ms) items.push(['Price vs average', (ms.diff >= 0 ? '+' : '') + f1(ms.diff) + '% · ' + (ms.above ? 'above' : 'below')], [ms.above ? 'Above since' : 'Below since', fday(ms.since)]);
+    items.forEach(([l, v], i) => {
+      const d = document.createElement('div');
+      const a = document.createElement('span'); a.className = 'lbl'; a.textContent = l;
+      const b = document.createElement('span'); b.className = 'val'; b.textContent = v;
+      if (i === 2 && ms) b.style.color = ms.above ? 'var(--buy)' : 'var(--sell)';
+      d.append(a, b); st.appendChild(d);
+    });
+    if (WEEKS) rows = rows.slice(-WEEKS);
+    const W = Math.max(300, el.clientWidth), H = 340, mt = 14, mb = 28;
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
+    const y = d3.scaleLinear(d3.extent(rows.flatMap((r) => r.ma == null ? [r.v] : [r.v, r.ma])), [H - mb, mt]).nice();
+    const yt = y.ticks(6);
+    const last = rows[rows.length - 1];
+    const fy = (v) => v < 10 ? d3.format('.2f')(v) : d3.format(',.0f')(v);
+    const endP = fprice(last.v), endM = last.ma == null ? '' : 'MA ' + fprice(last.ma);
+    const left = measure(svg, yt.map(fy)) + 10;
+    const right = measure(svg, [endP, endM]) + 16;
+    const x = d3.scaleUtc(d3.extent(rows, (r) => r.date), [left, W - right]);
+    svg.append('g').selectAll('line').data(yt).join('line').attr('x1', left).attr('x2', W - right).attr('y1', y).attr('y2', y).attr('stroke', 'var(--border)');
+    svg.append('g').selectAll('text').data(yt).join('text').attr('class', 'tick').attr('x', left - 8).attr('y', y).attr('dy', '0.32em').attr('text-anchor', 'end').text(fy);
+    const span = (rows[rows.length - 1].date - rows[0].date) / (365.25 * 864e5);
+    svg.append('g').selectAll('text').data(x.ticks(W < 560 ? 4 : 8)).join('text').attr('class', 'tick').attr('x', x).attr('y', H - 8).attr('text-anchor', 'middle')
+      .text(span <= 3 ? d3.utcFormat('%b %Y') : d3.utcFormat('%Y'));
+    svg.append('path').datum(rows).attr('d', d3.line().defined((r) => r.ma != null).x((r) => x(r.date)).y((r) => y(r.ma)))
+      .attr('fill', 'none').attr('stroke', 'var(--avg)').attr('stroke-width', 2).attr('stroke-linejoin', 'round');
+    svg.append('path').datum(rows).attr('d', d3.line().x((r) => x(r.date)).y((r) => y(r.v)))
+      .attr('fill', 'none').attr('stroke', 'var(--white)').attr('stroke-width', 1.5).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round');
+    svg.append('circle').attr('cx', x(last.date)).attr('cy', y(last.v)).attr('r', 4).attr('fill', 'var(--white)');
+    let yP = y(last.v), yM = last.ma == null ? null : y(last.ma);
+    if (yM != null && Math.abs(yP - yM) < 14) { if (yP <= yM) { yP -= (14 - (yM - yP)) / 2; yM = yP + 14; } else { yM -= (14 - (yP - yM)) / 2; yP = yM + 14; } }
+    svg.append('text').attr('class', 'tick').attr('x', x(last.date) + 8).attr('y', yP).attr('dy', '0.32em').attr('fill', 'var(--white)').text(endP);
+    if (yM != null) svg.append('text').attr('class', 'tick').attr('x', x(last.date) + 8).attr('y', yM).attr('dy', '0.32em').attr('fill', 'var(--avg)').text(endM);
+    const t = tip(el);
+    const hover = svg.append('g').style('display', 'none');
+    const rule = hover.append('line').attr('y1', mt).attr('y2', H - mb).attr('stroke', 'var(--ref)');
+    const dot = hover.append('circle').attr('r', 4).attr('fill', 'var(--white)');
+    const bis = d3.bisector((r) => r.date).center;
+    svg.append('rect').attr('x', left).attr('y', mt).attr('width', Math.max(0, W - right - left)).attr('height', H - mt - mb).attr('fill', 'transparent')
+      .on('pointermove', (e) => {
+        const [px] = d3.pointer(e, svg.node());
+        const r = rows[bis(rows, x.invert(px))];
+        if (!r) return;
+        hover.style('display', null);
+        rule.attr('x1', x(r.date)).attr('x2', x(r.date));
+        dot.attr('cx', x(r.date)).attr('cy', y(r.v));
+        const lines = [[c.name + ' · week of ' + fday(r.date), true], ['Close ' + fprice(r.v)]];
+        if (r.ma != null) lines.push(['40w avg ' + fprice(r.ma)], [(r.v >= r.ma ? 'Above by ' : 'Below by ') + f1(Math.abs(r.v / r.ma - 1) * 100) + '%', true]);
+        const er = el.getBoundingClientRect(), sr = svg.node().getBoundingClientRect(), sc = sr.width / W;
+        showTip(el, t, lines, x(r.date) * sc + sr.left - er.left, y(r.v) * sc + sr.top - er.top);
+      })
+      .on('pointerleave', () => { hover.style('display', 'none'); t.hidden = true; });
+  }
+
   function drawHoldings() {
     const el = document.getElementById('c-hold');
     el.replaceChildren();
@@ -585,6 +695,7 @@
     DATA.companies.slice().sort((a, b) => Z(b).z - Z(a).z).forEach((c) => {
       const n = c.now, zs = Z(c), tr = document.createElement('tr'), k = zcls(zs.z);
       td(tr, nm(c)); td(tr, fval(n.disc)); td(tr, fval(n.mean_5y)); td(tr, n.mean_7y == null ? '–' : fval(n.mean_7y)); td(tr, fval(zs.mean)); td(tr, f1(zs.sd)); td(tr, fz(zs.z), k); td(tr, fpct(n.pct_5y)); td(tr, zname(zs.z), k);
+      const msx = maStatus(c); td(tr, msx ? (msx.diff >= 0 ? '+' : '') + f1(msx.diff) + '% ' + (msx.above ? '▲' : '▼') : '–', msx ? (msx.above ? 'buy' : 'sell') : '');
       tn.appendChild(tr);
     });
     const tb = document.getElementById('t-bt');
@@ -615,7 +726,7 @@
     parts.forEach((x) => { if (typeof x === 'string') p.appendChild(document.createTextNode(x)); else { const s = document.createElement('strong'); s.textContent = x[0]; if (x[1]) s.className = x[1]; p.appendChild(s); } });
   }
 
-  function drawAll() { drawOverview(); drawDetail(); drawHoldings(); drawGrid(); if (document.getElementById('learn').open) drawExample(); }
+  function drawAll() { drawOverview(); drawDetail(); drawHoldings(); drawPrice(); drawGrid(); if (document.getElementById('learn').open) drawExample(); }
 
   fetch('data.json', { cache: 'no-cache' })
     .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
@@ -627,9 +738,14 @@
       d.companies.forEach((c) => pick.appendChild(new Option(c.name, c.ticker)));
       pick.value = SEL;
       pick.addEventListener('change', () => select(pick.value, false));
-      document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => {
-        YEARS = b.dataset.years === 'blend' ? 'blend' : Number(b.dataset.years);
-        document.querySelectorAll('.seg button').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+      document.querySelectorAll('#range-seg button').forEach((b) => b.addEventListener('click', () => {
+        WEEKS = Number(b.dataset.weeks);
+        document.querySelectorAll('#range-seg button').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+        drawPrice();
+      }));
+      document.querySelectorAll('#avg-seg button').forEach((b) => b.addEventListener('click', () => {
+        YEARS = Number(b.dataset.years);
+        document.querySelectorAll('#avg-seg button').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
         drawDetail(); drawGrid();
       }));
       drawKpis(); drawTables(); drawAll(); drawExample();

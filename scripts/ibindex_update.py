@@ -48,9 +48,10 @@ FWD = 250            # forward horizon for the backtest (trading days)
 MIN_HISTORY = 1250   # first backtest day needs 5 years of prior data
 MIN_ZONE_DAYS = 500  # under ~2 years of data a company gets no zone ("short")
 
-# Zones: "normal" level = average of the 5-year and 7-year averages,
-# "normal swing" = average of the 5-year and 7-year standard deviations.
-# z = (discount today - normal level) / normal swing.
+# Zones: "normal" level = the 7-year average discount (or all data if shorter),
+# "normal swing" = the 7-year standard deviation.
+# z = (discount today - 7-year average) / 7-year standard deviation.
+ZONE_BASIS = "7y"
 BAND_MONTHS = 36     # rolling window for the monthly band
 MIN_BAND_MONTHS = 24
 
@@ -248,6 +249,31 @@ def adjusted_prices(dates, price, nav):
     return adj, events
 
 
+def weekly_closes(dates, adj, last_raw):
+    """Split-adjusted closing price for every calendar week (last trading day of the week).
+
+    The adjusted index is rescaled so the latest value equals today's real share price.
+    Weeks without trading repeat the previous close. Returned as the Monday of the
+    first week plus one close per consecutive week.
+    """
+    from datetime import date, timedelta
+    scale = last_raw / adj[-1]
+    by_week = {}
+    for d, a in zip(dates, adj):
+        y, m, dd = map(int, d.split("-"))
+        by_week[date(y, m, dd).isocalendar()[:2]] = a * scale   # later days overwrite earlier
+    first = min(by_week)
+    monday = date.fromisocalendar(first[0], first[1], 1)
+    last_key = max(by_week)
+    closes, prev, wk = [], None, monday
+    while wk.isocalendar()[:2] <= last_key:
+        v = by_week.get(wk.isocalendar()[:2], prev)
+        prev = v
+        closes.append(None if v is None else round(v, 3 if v < 10 else 2))
+        wk += timedelta(days=7)
+    return {"start": monday.isoformat(), "close": closes}
+
+
 def analyse(rows):
     dates = [r[0] for r in rows]
     raw_price = [r[1] for r in rows]
@@ -283,15 +309,13 @@ def analyse(rows):
     z3 = (now - m3) / s3 if s3 else 0.0
     z5 = (now - m5) / s5 if s5 else 0.0
     z7 = (now - m7) / s7 if s7 else 0.0
-    mb, sb = (m5 + m7) / 2, (s5 + s7) / 2
-    zb = (now - mb) / sb if sb else 0.0
-    zone = "buy" if zb >= THRESHOLD else ("sell" if zb <= -THRESHOLD else "neutral")
+    zone = "buy" if z7 >= THRESHOLD else ("sell" if z7 <= -THRESHOLD else "neutral")
     if n < MIN_ZONE_DAYS:
         zone = "short"
 
-    # Backtest: each day, the same blended z as above but using only the data
-    # available that day (previous 5 and 7 years), then measure the price change
-    # and discount change FWD days later.
+    # Backtest: each day, the same 7-year z as above but using only the data
+    # available that day (previous 7 years, at least 5), then measure the
+    # split-adjusted price change and the discount change FWD days later.
     S = [0.0] * (n + 1)
     Q = [0.0] * (n + 1)
     for i, v in enumerate(disc):
@@ -305,12 +329,10 @@ def analyse(rows):
         return m, max(0.0, (Q[i] - Q[a]) / L - m * m) ** 0.5
 
     for i in range(MIN_HISTORY, n - FWD):
-        bm5, bs5 = win_stats(i, WIN_5Y)
-        bm7, bs7 = win_stats(i, WIN_7Y)
-        sd = (bs5 + bs7) / 2
+        bm7, sd = win_stats(i, WIN_7Y)
         if sd == 0:
             continue
-        z = (disc[i] - (bm5 + bm7) / 2) / sd
+        z = (disc[i] - bm7) / sd
         obs = ((price[i + FWD] / price[i] - 1) * 100, disc[i + FWD] - disc[i])
         buckets["all"].append(obs)
         if z >= THRESHOLD:
@@ -334,12 +356,12 @@ def analyse(rows):
         "last_date": dates[-1],
         "price": raw_price[-1],
         "corporate_actions": events,
+        "weekly": weekly_closes(dates, price, raw_price[-1]),
         "monthly": {"start": mdates[0], "v": [r1(v) for v in mvals], "mu": mu, "hi": hi, "lo": lo},
         "now": {
             "disc": r1(now), "mean_1y": r1(m1), "mean_3y": r1(m3), "sd_3y": r1(s3), "z_3y": round(z3, 2),
             "mean_5y": r1(m5), "sd_5y": r1(s5), "z_5y": round(z5, 2),
             "mean_7y": r1(m7), "sd_7y": r1(s7), "z_7y": round(z7, 2),
-            "mean_blend": r1(mb), "sd_blend": r1(sb), "z_blend": round(zb, 2),
             "years": round(n / 250, 1),
             "pct_5y": r1(sum(1 for v in w5 if v <= now) / len(w5) * 100),
             "pct_all": r1(sum(1 for v in disc if v <= now) / n * 100),
@@ -386,7 +408,7 @@ def main():
             result.append(entry)
             fresh += 1
             print("OK   %-7s %5d days, last %s, discount %+.1f%%, z %+.2f%s" % (
-                ticker, len(rows), entry["last_date"], entry["now"]["disc"], entry["now"]["z_blend"],
+                ticker, len(rows), entry["last_date"], entry["now"]["disc"], entry["now"]["z_7y"],
                 "".join("  [split/spin-off %s, factor %s]" % (e["date"], e["factor"]) for e in entry["corporate_actions"])))
         except Exception as exc:  # noqa: BLE001
             if ticker in previous:
@@ -405,7 +427,8 @@ def main():
         "data_through": max(c["last_date"] for c in result),
         "source": "ibindex.se price history CSV (price, reported and calculated NAV)",
         "threshold": THRESHOLD,
-        "windows": {"z": "average of 5y (1250) and 7y (1750 trading days) mean and sd", "band": "%d months" % BAND_MONTHS, "forward": "%d trading days" % FWD},
+        "zone_basis": ZONE_BASIS,
+        "windows": {"z": "7y = 1750 trading days (all data if shorter)", "band": "%d months" % BAND_MONTHS, "forward": "%d trading days" % FWD},
         "companies": result,
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)

@@ -226,6 +226,7 @@
         <div class="legend">
           <span><span class="sw" style="background:var(--line)"></span>Discount / premium</span>
           <span><span class="sw" style="background:var(--avg); border-radius:2px; height:3px; vertical-align:3px"></span><span id="avg-legend">7-year average</span></span>
+          <span id="nav-legend" style="font-family:'IBM Plex Mono', monospace"></span>
           <span><span class="sw" style="background:rgba(0,229,160,0.25); border-radius:2px"></span>Discount area (price below NAV)</span>
         </div>
         <div class="chart" id="c-detail"></div>
@@ -501,6 +502,11 @@
         d.append(a, b); st.appendChild(d);
       });
     document.getElementById('avg-legend').textContent = avgLabel(avg, false);
+    // NAV growth (CAGR, per share, split-adjusted) for the same window as the average
+    const ng = (c.nav_growth || {})[YEARS + 'y'];
+    const nl = document.getElementById('nav-legend');
+    nl.textContent = 'NAV growth p.a. ' + YEARS + 'y: ' + (ng == null ? '–' : (ng >= 0 ? '+' : '') + f1(ng) + ' %');
+    nl.style.color = ng == null ? '' : (ng >= 0 ? 'var(--buy)' : 'var(--sell)');
 
     const W = Math.max(300, el.clientWidth), H = 380, mt = 14, mb = 28;
     const svg = d3.select(el).append('svg').attr('width', '100%').attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);

@@ -249,6 +249,44 @@ def adjusted_prices(dates, price, nav):
     return adj, events
 
 
+def adjusted_nav(dates, price, nav):
+    """NAV per share adjusted for the same splits and spin-offs as the price.
+
+    On a detected corporate action the per-share NAV drops mechanically (a split
+    divides it, a spin-off hands part of it to the new company), so that day is
+    treated as no change. Other days use the calculated NAV's own daily change.
+    """
+    import math
+    adj = [nav[0]]
+    for i in range(1, len(nav)):
+        pr, nr = price[i] / price[i - 1], nav[i] / nav[i - 1]
+        lp, ln = math.log(pr), math.log(nr)
+        step = 1.0 if (abs(lp) > SPLIT_MOVE and abs(lp - ln) < SPLIT_MATCH) else nr
+        adj.append(adj[-1] * step)
+    return adj
+
+
+NAV_WINDOWS = {"1y": WIN_1Y, "3y": WIN_3Y, "5y": WIN_5Y, "7y": WIN_7Y}
+
+
+def nav_growth(dates, price, nav):
+    """Annualised growth (CAGR, %) of split-adjusted NAV per share over 1, 3, 5 and 7 years.
+
+    None when the company has less history than the window.
+    """
+    adj = adjusted_nav(dates, price, nav)
+    n = len(adj)
+    out = {}
+    for label, length in NAV_WINDOWS.items():
+        if n - 1 < length:
+            out[label] = None
+            continue
+        years = length / 250
+        ratio = adj[-1] / adj[-1 - length]
+        out[label] = r1((ratio ** (1 / years) - 1) * 100)
+    return out
+
+
 def weekly_closes(dates, adj, last_raw):
     """Split-adjusted closing price for every calendar week (last trading day of the week).
 
@@ -368,6 +406,7 @@ def analyse(rows):
             "min_5y": r1(min(w5)), "max_5y": r1(max(w5)), "zone": zone,
         },
         "backtest": {k: summarise(v) for k, v in buckets.items()},
+        "nav_growth": nav_growth(dates, raw_price, [r[2] for r in rows]),
     }
 
 

@@ -268,10 +268,10 @@
 
   <section class="card">
     <h2>Today versus history</h2>
-    <p class="note">Computed on daily values. Percentile: share of days over the last five years with a smaller discount than today. ° = tracked by ibindex but not part of the ibindex index itself.</p>
+    <p class="note">Computed on daily values. Percentile: share of days over the last five years with a smaller discount than today. NAV growth p.a.: how much the net asset value per share has grown each year on average over 1, 3, 5 and 7 years, adjusted for splits and spin-offs. Higher means the company has grown its underlying value faster. ° = tracked by ibindex but not part of the ibindex index itself.</p>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Company</th><th>Today</th><th>5y average</th><th>7y average<br>(normal level)</th><th>σ 7y</th><th>z</th><th>Percentile 5y</th><th>Zone</th><th>Price vs<br>40w average</th></tr></thead>
+        <thead><tr><th>Company</th><th>Today</th><th>5y average</th><th>7y average<br>(normal level)</th><th>σ 7y</th><th>z</th><th>Percentile 5y</th><th>Zone</th><th>Price vs<br>40w average</th><th>NAV growth p.a.<br>1y</th><th>NAV growth p.a.<br>3y</th><th>NAV growth p.a.<br>5y</th><th>NAV growth p.a.<br>7y</th></tr></thead>
         <tbody id="t-now"></tbody>
       </table>
     </div>
@@ -752,6 +752,8 @@
       const n = c.now, zs = Z(c), tr = document.createElement('tr'), k = zcls(zs.z);
       td(tr, nm(c)); td(tr, fval(n.disc)); td(tr, fval(n.mean_5y)); td(tr, n.mean_7y == null ? '–' : fval(n.mean_7y)); td(tr, fval(zs.mean)); td(tr, f1(zs.sd)); td(tr, fz(zs.z), k); td(tr, fpct(n.pct_5y)); td(tr, zname(zs.z), k);
       const msx = maStatus(c); td(tr, msx ? (msx.diff >= 0 ? '+' : '') + f1(msx.diff) + '% ' + (msx.above ? '▲' : '▼') : '–', msx ? (msx.above ? 'buy' : 'sell') : '');
+      const ng = c.nav_growth || {};
+      ['1y', '3y', '5y', '7y'].forEach((k) => { const v = ng[k]; td(tr, v == null ? '–' : (v >= 0 ? '+' : '') + f1(v) + '%', v == null ? '' : v >= 0 ? 'buy' : 'sell'); });
       tn.appendChild(tr);
     });
     const tb = document.getElementById('t-bt');
